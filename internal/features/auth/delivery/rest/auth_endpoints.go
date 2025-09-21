@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yakka-backend/http/middleware"
 	"github.com/yakka-backend/internal/features/auth/email_verification/usecase"
+	"github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/auth/user/payload"
 	auth_user_usecase "github.com/yakka-backend/internal/features/auth/user/usecase"
 	"github.com/yakka-backend/internal/shared/response"
@@ -42,8 +43,21 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Register user
-	user, err := h.authUsecase.Register(r.Context(), req.Email, req.Password, req.Phone)
+	// Register user based on auto_verify parameter
+	var user *models.User
+	var err error
+	var isAutoVerified bool
+
+	if req.AutoVerify {
+		// Register with auto verification
+		user, err = h.authUsecase.RegisterWithAutoVerify(r.Context(), req.Email, req.Password, req.Phone)
+		isAutoVerified = true
+	} else {
+		// Register with pending status (requires email verification)
+		user, err = h.authUsecase.Register(r.Context(), req.Email, req.Password, req.Phone)
+		isAutoVerified = false
+	}
+
 	if err != nil {
 		// Handle specific error types
 		switch err.Error() {
@@ -57,20 +71,23 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Send email verification automatically
-	token, err := h.emailVerificationUsecase.RequestEmailVerification(r.Context(), user.ID)
-	if err != nil {
-		log.Printf("⚠️ Failed to send email verification to %s: %v", user.Email, err)
-		// Continue anyway - user is created, just email verification failed
-	} else {
-		log.Printf("📧 Email verification sent to %s with token: %s", user.Email, token)
+	// Send email verification only if not auto-verified
+	var emailSent bool
+	if !isAutoVerified {
+		token, err := h.emailVerificationUsecase.RequestEmailVerification(r.Context(), user.ID)
+		if err != nil {
+			log.Printf("⚠️ Failed to send email verification to %s: %v", user.Email, err)
+			emailSent = false
+		} else {
+			log.Printf("📧 Email verification sent to %s with token: %s", user.Email, token)
+			emailSent = true
+		}
 	}
 
-	// Convert to response
-	userResp := payload.UserResponse{
+	// Convert to response (without phone for registration)
+	userResp := payload.RegisterUserResponse{
 		ID:            user.ID.String(),
 		Email:         user.Email,
-		Phone:         user.Phone,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -79,9 +96,19 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		RoleChangedAt: user.RoleChangedAt,
 	}
 
+	// Set appropriate message based on verification status
+	var message string
+	if isAutoVerified {
+		message = "User registered and verified successfully. You can now log in."
+	} else {
+		message = "User registered successfully. Please check your email for verification."
+	}
+
 	resp := payload.RegisterResponse{
-		User:    userResp,
-		Message: "User registered successfully. Please check your email for verification.",
+		User:         userResp,
+		Message:      message,
+		AutoVerified: isAutoVerified,
+		EmailSent:    emailSent,
 	}
 
 	response.WriteJSON(w, http.StatusCreated, resp)
@@ -138,15 +165,27 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get user profile information
+	profileInfo, err := h.authUsecase.GetUserProfileInfo(r.Context(), user.ID)
+	if err != nil {
+		// If we can't get profile info, set default values
+		profileInfo = payload.ProfileInfo{
+			HasBuilderProfile: false,
+			HasLabourProfile:  false,
+			HasAnyProfile:     false,
+		}
+	}
+
 	// TODO: Generate refresh token (for now using placeholder)
 	refreshToken := "refresh_token_here"
 	expiresIn := int64(3600) // 1 hour
 
 	resp := payload.LoginResponse{
 		User:         userResp,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ExpiresIn:    expiresIn,
+		AccessToken:    accessToken,
+		RefreshToken:   refreshToken,
+		ExpiresIn:      expiresIn,
+		Profiles:       profileInfo,
 	}
 
 	response.WriteJSON(w, http.StatusOK, resp)

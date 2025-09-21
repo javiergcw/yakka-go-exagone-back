@@ -4,7 +4,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/yakka-backend/internal/features/users/models"
+	emailVerificationModels "github.com/yakka-backend/internal/features/auth/email_verification/models"
+	passwordResetModels "github.com/yakka-backend/internal/features/auth/password_reset/models"
+	authUserModels "github.com/yakka-backend/internal/features/auth/user/models"
+	userSessionModels "github.com/yakka-backend/internal/features/auth/user_session/models"
+	builderProfileModels "github.com/yakka-backend/internal/features/builder_profiles/models"
+	labourProfileModels "github.com/yakka-backend/internal/features/labour_profiles/models"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -43,14 +48,76 @@ func Migrate() error {
 		return fmt.Errorf("database connection not established")
 	}
 
-	err := DB.AutoMigrate(
-		&models.User{},
+	// Create custom types first
+	err := createCustomTypes()
+	if err != nil {
+		return fmt.Errorf("failed to create custom types: %w", err)
+	}
+
+	// Auto-migrate all models
+	err = DB.AutoMigrate(
+		// Core user models
+		&authUserModels.User{},
+		&userSessionModels.Session{},
+		
+		// Authentication models
+		&emailVerificationModels.EmailVerification{},
+		&passwordResetModels.PasswordReset{},
+		
+		// Profile models
+		&builderProfileModels.BuilderProfile{},
+		&labourProfileModels.LabourProfile{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)
 	}
 
 	log.Println("✅ Database migrations completed successfully")
+	return nil
+}
+
+// createCustomTypes creates PostgreSQL custom types
+func createCustomTypes() error {
+	// Create or update user_status enum
+	err := DB.Exec(`
+		DO $$ BEGIN
+			-- Try to create the enum first
+			CREATE TYPE user_status AS ENUM ('active', 'inactive', 'suspended', 'pending', 'banned');
+		EXCEPTION
+			WHEN duplicate_object THEN 
+				-- If enum exists, add new values if they don't exist
+				BEGIN
+					ALTER TYPE user_status ADD VALUE IF NOT EXISTS 'banned';
+				EXCEPTION
+					WHEN duplicate_object THEN null;
+				END;
+		END $$;
+	`).Error
+	if err != nil {
+		return err
+	}
+
+	// Create or update user_role enum
+	err = DB.Exec(`
+		DO $$ BEGIN
+			-- Try to create the enum first
+			CREATE TYPE user_role AS ENUM ('user', 'admin', 'builder', 'labour');
+		EXCEPTION
+			WHEN duplicate_object THEN 
+				-- If enum exists, add new values if they don't exist
+				BEGIN
+					ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'builder';
+					ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'labour';
+				EXCEPTION
+					WHEN duplicate_object THEN null;
+				END;
+		END $$;
+	`).Error
+	if err != nil {
+		return err
+	}
+
+	log.Println("✅ Custom types created successfully")
 	return nil
 }
 

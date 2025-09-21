@@ -2,9 +2,10 @@ package payload
 
 // RegisterRequest represents a user registration request
 type RegisterRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	Phone    string `json:"phone" validate:"required"`
+	Email      string  `json:"email" validate:"required,email"`
+	Password   string `json:"password" validate:"required,min=8"`
+	Phone      *string `json:"phone,omitempty"`
+	AutoVerify bool   `json:"auto_verify,omitempty"` // Si true, verifica la cuenta inmediatamente
 }
 
 // LoginRequest represents a user login request

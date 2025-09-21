@@ -1,58 +1,50 @@
-# Arquitectura del Proyecto
+# Yakka Backend - Arquitectura
 
-## Estructura General
+## 📁 Estructura del Proyecto
 ```
 yakka-go-exagone-back/
-├── config/                    # Configuración global
-├── database/                  # Configuración de base de datos
-├── http/                     # HTTP handlers (legacy)
-├── internal/                 # Código interno de la aplicación
-│   ├── features/             # Módulos de funcionalidades
-│   │   └── users/            # Módulo de usuarios
-│   │       ├── delivery/     # Capa de entrega (REST)
-│   │       ├── entity/       # Entidades y repositorios
-│   │       ├── models/       # Modelos de datos
-│   │       ├── payload/      # DTOs y payloads
-│   │       └── usecase/      # Lógica de negocio
-│   ├── infrastructure/       # Infraestructura
-│   │   ├── config/          # Configuración interna
-│   │   ├── database/        # Base de datos
-│   │   └── http/            # HTTP server y middleware
-│   └── shared/              # Código compartido
-│       ├── constants/       # Constantes
-│       ├── errors/          # Manejo de errores
-│       ├── response/         # Respuestas HTTP
-│       └── validation/       # Validaciones
+├── commands/                 # Scripts de ejecución
+│   ├── dev.sh               # Desarrollo
+│   ├── start.sh             # Producción
+│   └── migrate.sh           # Migraciones
+├── internal/features/        # Módulos de funcionalidades
+│   ├── auth/                # Autenticación
+│   │   ├── user/            # Usuarios
+│   │   ├── builder_profiles/ # Perfiles constructor
+│   │   └── labour_profiles/  # Perfiles trabajador
+│   └── users/               # Usuarios (legacy)
+├── internal/infrastructure/  # Infraestructura
+│   ├── config/              # Configuración
+│   ├── database/            # Base de datos
+│   └── http/                # HTTP server
+├── internal/shared/         # Código compartido
+│   ├── errors/              # Manejo de errores
+│   ├── response/            # Respuestas HTTP
+│   └── validation/          # Validaciones
+├── .env.dev                 # Configuración desarrollo
+├── .env.prod                # Configuración producción
 └── main.go                  # Punto de entrada
 ```
 
-## Patrón de Arquitectura
+## 🏗️ Arquitectura
 - **Clean Architecture** con separación de capas
-- **Feature-based** organization
-- **Dependency Injection** para handlers
+- **Feature-based** por módulos
+- **GORM** para migraciones automáticas
+- **Scripts bash** para ejecución
 
-## Imports Importantes
-```go
-// Handlers de usuarios
-"github.com/yakka-backend/internal/features/users/delivery/rest"
+## 🚀 Comandos
+```bash
+# Desarrollo
+./commands/dev.sh
 
-// Infraestructura
-"github.com/yakka-backend/internal/infrastructure/http/middleware"
-"github.com/yakka-backend/internal/infrastructure/config"
+# Producción  
+./commands/start.sh
 
-// Shared
-"github.com/yakka-backend/internal/shared/response"
-"github.com/yakka-backend/internal/shared/errors"
+# Migraciones
+./commands/migrate.sh
 ```
 
-## Convenciones
-- **Widgets globales**: `@widgets/` (múltiples módulos)
-- **Widgets específicos**: `{module}/widgets/` (por módulo)
-- **No usar**: `components/` (solo `widgets/`)
-
-## Stack Tecnológico
-- **Go 1.24.2**
+## 🛠️ Stack
+- **Go 1.24.2** + **GORM** + **PostgreSQL**
 - **Gorilla Mux** (router)
-- **GORM** (ORM)
-- **PostgreSQL** (base de datos)
-- **Docker** (contenedores)
+- **Scripts bash** (sin Docker)

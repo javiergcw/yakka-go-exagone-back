@@ -20,9 +20,10 @@ const (
 type UserRole string
 
 const (
-	UserRoleAdmin     UserRole = "admin"
-	UserRoleUser      UserRole = "user"
-	UserRoleModerator UserRole = "moderator"
+	UserRoleAdmin   UserRole = "admin"
+	UserRoleUser    UserRole = "user"
+	UserRoleBuilder UserRole = "builder"
+	UserRoleLabour  UserRole = "labour"
 )
 
 // User represents a user in the system

@@ -206,3 +206,5 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo `LICENSE` para más det
 ## 🆘 Soporte
 
 Si tienes alguna pregunta o problema, por favor abre un issue en el repositorio.
+
+

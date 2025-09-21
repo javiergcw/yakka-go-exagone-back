@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -14,12 +15,22 @@ import (
 	auth_user_usecase "github.com/yakka-backend/internal/features/auth/user/usecase"
 	auth_session_db "github.com/yakka-backend/internal/features/auth/user_session/entity/database"
 	auth_session_usecase "github.com/yakka-backend/internal/features/auth/user_session/usecase"
+	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
+	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
+	builder_usecase "github.com/yakka-backend/internal/features/builder_profiles/usecase"
+	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
+	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
+	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"github.com/yakka-backend/internal/infrastructure/database"
 	httpRouter "github.com/yakka-backend/internal/infrastructure/http"
 )
 
 func main() {
+	// Parse command line flags
+	migrateFlag := flag.Bool("migrate", false, "Run database migrations and exit")
+	flag.Parse()
+
 	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -32,26 +43,42 @@ func main() {
 	}
 	defer database.Close()
 
+	// If migrate flag is set, run migrations and exit
+	if *migrateFlag {
+		log.Println("🚀 Running database migrations...")
+		if err := database.Migrate(); err != nil {
+			log.Fatalf("Failed to migrate database: %v", err)
+		}
+		log.Println("✅ Database migration completed successfully!")
+		return
+	}
+
 	// Initialize repositories
 	authUserRepo := auth_user_db.NewUserRepository(database.DB)
 	authSessionRepo := auth_session_db.NewSessionRepository(database.DB)
 	authPasswordRepo := auth_password_db.NewPasswordResetRepository(database.DB)
 	authEmailRepo := auth_email_db.NewEmailVerificationRepository(database.DB)
+	builderRepo := builder_db.NewBuilderProfileRepository(database.DB)
+	labourRepo := labour_db.NewLabourProfileRepository(database.DB)
 
 	// Initialize use cases
-	authUserUseCase := auth_user_usecase.NewAuthUsecase(authUserRepo)
+	authUserUseCase := auth_user_usecase.NewAuthUsecase(authUserRepo, builderRepo, labourRepo)
 	authSessionUseCase := auth_session_usecase.NewSessionUsecase(authSessionRepo)
 	authPasswordUseCase := auth_password_usecase.NewPasswordResetUsecase(authPasswordRepo)
 	authEmailUseCase := auth_email_usecase.NewEmailVerificationUsecase(authEmailRepo, authUserRepo)
+	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, authUserRepo)
+	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, authUserRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase)
 	sessionHandler := auth_rest.NewSessionHandler(authSessionUseCase)
 	passwordHandler := auth_rest.NewPasswordHandler(authPasswordUseCase)
 	emailHandler := auth_rest.NewEmailHandler(authEmailUseCase)
+	labourProfileHandler := labour_rest.NewLabourProfileHandler(labourProfileUseCase)
+	builderProfileHandler := builder_rest.NewBuilderProfileHandler(builderProfileUseCase)
 
 	// Initialize router
-	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler)
+	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler)
 	httpRouter := router.SetupRoutes()
 
 	// Start server

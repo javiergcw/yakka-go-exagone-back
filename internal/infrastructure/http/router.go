@@ -7,16 +7,20 @@ import (
 
 	"github.com/gorilla/mux"
 	auth_rest "github.com/yakka-backend/internal/features/auth/delivery/rest"
+	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
+	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 )
 
 // Router sets up the HTTP routes
 type Router struct {
-	authHandler     *auth_rest.AuthHandler
-	sessionHandler  *auth_rest.SessionHandler
-	passwordHandler *auth_rest.PasswordHandler
-	emailHandler    *auth_rest.EmailHandler
+	authHandler         *auth_rest.AuthHandler
+	sessionHandler      *auth_rest.SessionHandler
+	passwordHandler     *auth_rest.PasswordHandler
+	emailHandler        *auth_rest.EmailHandler
+	labourProfileHandler *labour_rest.LabourProfileHandler
+	builderProfileHandler *builder_rest.BuilderProfileHandler
 }
 
 // NewRouter creates a new router
@@ -25,12 +29,16 @@ func NewRouter(
 	sessionHandler *auth_rest.SessionHandler,
 	passwordHandler *auth_rest.PasswordHandler,
 	emailHandler *auth_rest.EmailHandler,
+	labourProfileHandler *labour_rest.LabourProfileHandler,
+	builderProfileHandler *builder_rest.BuilderProfileHandler,
 ) *Router {
 	return &Router{
-		authHandler:     authHandler,
-		sessionHandler:  sessionHandler,
-		passwordHandler: passwordHandler,
-		emailHandler:    emailHandler,
+		authHandler:          authHandler,
+		sessionHandler:       sessionHandler,
+		passwordHandler:      passwordHandler,
+		emailHandler:         emailHandler,
+		labourProfileHandler: labourProfileHandler,
+		builderProfileHandler: builderProfileHandler,
 	}
 }
 
@@ -57,6 +65,10 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.HandleFunc("/auth/profile", r.authHandler.UpdateProfile).Methods("PUT")
 	api.HandleFunc("/auth/password/change", r.authHandler.ChangePassword).Methods("POST")
 	api.HandleFunc("/auth/logout", r.sessionHandler.Logout).Methods("POST")
+
+	// Profile endpoints (protected)
+	api.HandleFunc("/profiles/labour", r.labourProfileHandler.CreateLabourProfile).Methods("POST")
+	api.HandleFunc("/profiles/builder", r.builderProfileHandler.CreateBuilderProfile).Methods("POST")
 
 	// Apply middleware stack
 	middlewareStack := middleware.NewMiddlewareStack()
