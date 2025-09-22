@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"net/http"
-
-	"github.com/gorilla/handlers"
 )
 
 // CORSConfig holds CORS configuration
@@ -13,7 +11,7 @@ type CORSConfig struct {
 	AllowedHeaders []string
 }
 
-// DefaultCORSConfig returns default CORS configuration
+// DefaultCORSConfig returns a default CORS configuration
 func DefaultCORSConfig() *CORSConfig {
 	return &CORSConfig{
 		AllowedOrigins: []string{"*"},
@@ -22,11 +20,23 @@ func DefaultCORSConfig() *CORSConfig {
 	}
 }
 
-// CORS creates a CORS middleware
+// CORS middleware
 func CORS(config *CORSConfig) func(http.Handler) http.Handler {
-	return handlers.CORS(
-		handlers.AllowedOrigins(config.AllowedOrigins),
-		handlers.AllowedMethods(config.AllowedMethods),
-		handlers.AllowedHeaders(config.AllowedHeaders),
-	)
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Set CORS headers
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			// Handle preflight requests
+			if r.Method == "OPTIONS" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
 }

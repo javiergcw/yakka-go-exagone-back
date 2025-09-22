@@ -70,7 +70,11 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.HandleFunc("/profiles/labour", r.labourProfileHandler.CreateLabourProfile).Methods("POST")
 	api.HandleFunc("/profiles/builder", r.builderProfileHandler.CreateBuilderProfile).Methods("POST")
 
-	// Apply middleware stack
+	// Master tables endpoints (require license)
+	api.Handle("/licenses", middleware.LicenseMiddleware(http.HandlerFunc(r.getLicenses))).Methods("GET")
+	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.getSkills))).Methods("GET")
+
+	// Apply middleware stack (includes auth middleware)
 	middlewareStack := middleware.NewMiddlewareStack()
 	handler := middlewareStack.ApplyToRouter(router)
 
@@ -86,8 +90,65 @@ func (r *Router) healthCheck(w http.ResponseWriter, req *http.Request) {
 		Version:   "1.0.0",
 		Data: map[string]interface{}{
 			"uptime": "running",
+			"license": "YAKKA-PROD-2024-8F9E2A1B-3C4D5E6F-7A8B9C0D-1E2F3A4B", // License for master tables endpoints
 		},
 	}
 
 	response.WriteJSON(w, http.StatusOK, healthResp)
+}
+
+// getLicenses returns all licenses (requires license header)
+func (r *Router) getLicenses(w http.ResponseWriter, req *http.Request) {
+	// This would typically fetch from database
+	licenses := []map[string]interface{}{
+		{
+			"id":          "1",
+			"name":        "Licencia de Conducir",
+			"description": "Permiso para conducir vehículos automotores",
+		},
+		{
+			"id":          "2", 
+			"name":        "Licencia de Construcción",
+			"description": "Permiso para realizar trabajos de construcción",
+		},
+		{
+			"id":          "3",
+			"name":        "Licencia de Electricista", 
+			"description": "Certificación para trabajos eléctricos",
+		},
+	}
+
+	response.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"data":    licenses,
+		"message": "Licenses retrieved successfully",
+	})
+}
+
+// getSkills returns all skills (requires license header)
+func (r *Router) getSkills(w http.ResponseWriter, req *http.Request) {
+	// This would typically fetch from database
+	skills := []map[string]interface{}{
+		{
+			"id":          "1",
+			"name":        "Albañilería",
+			"description": "Construcción con ladrillos, bloques y mortero",
+		},
+		{
+			"id":          "2",
+			"name":        "Carpintería", 
+			"description": "Trabajos con madera y estructuras de madera",
+		},
+		{
+			"id":          "3",
+			"name":        "Electricidad",
+			"description": "Instalaciones y reparaciones eléctricas",
+		},
+	}
+
+	response.WriteJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"data":    skills,
+		"message": "Skills retrieved successfully",
+	})
 }

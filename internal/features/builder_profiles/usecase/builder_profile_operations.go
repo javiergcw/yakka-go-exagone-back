@@ -6,16 +6,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yakka-backend/internal/features/auth/user/models"
+	authUserModels "github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/builder_profiles/entity/database"
-	"github.com/yakka-backend/internal/features/builder_profiles/models"
+	builderModels "github.com/yakka-backend/internal/features/builder_profiles/models"
 	"github.com/yakka-backend/internal/features/builder_profiles/payload"
 	authUserRepo "github.com/yakka-backend/internal/features/auth/user/entity/database"
 	"gorm.io/gorm"
 )
 
 type BuilderProfileUsecase interface {
-	CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateBuilderProfileRequest) (*models.BuilderProfile, error)
+	CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateBuilderProfileRequest) (*builderModels.BuilderProfile, error)
 }
 
 type builderProfileUsecase struct {
@@ -30,7 +30,7 @@ func NewBuilderProfileUsecase(builderRepo database.BuilderProfileRepository, use
 	}
 }
 
-func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateBuilderProfileRequest) (*models.BuilderProfile, error) {
+func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateBuilderProfileRequest) (*builderModels.BuilderProfile, error) {
 	// Check if user exists
 	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -49,11 +49,11 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 	}
 
 	// Create new profile
-	profile := &models.BuilderProfile{
+	profile := &builderModels.BuilderProfile{
 		UserID:      userID,
-		CompanyName: req.CompanyName,
-		DisplayName: req.DisplayName,
-		Location:    req.Location,
+		CompanyName: &req.CompanyName,
+		DisplayName: &req.DisplayName,
+		Location:    &req.Location,
 		Bio:         req.Bio,
 		AvatarURL:   req.AvatarURL,
 		CreatedAt:   time.Now(),
@@ -66,7 +66,7 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 	}
 
 	// Update user role to builder
-	user.Role = models.UserRoleBuilder
+	user.Role = authUserModels.UserRoleBuilder
 	user.RoleChangedAt = &time.Time{}
 	*user.RoleChangedAt = time.Now()
 

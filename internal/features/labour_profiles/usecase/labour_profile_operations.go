@@ -6,16 +6,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/yakka-backend/internal/features/auth/user/models"
+	authUserModels "github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/labour_profiles/entity/database"
-	"github.com/yakka-backend/internal/features/labour_profiles/models"
+	labourModels "github.com/yakka-backend/internal/features/labour_profiles/models"
 	"github.com/yakka-backend/internal/features/labour_profiles/payload"
 	authUserRepo "github.com/yakka-backend/internal/features/auth/user/entity/database"
 	"gorm.io/gorm"
 )
 
 type LabourProfileUsecase interface {
-	CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateLabourProfileRequest) (*models.LabourProfile, error)
+	CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateLabourProfileRequest) (*labourModels.LabourProfile, error)
 }
 
 type labourProfileUsecase struct {
@@ -30,7 +30,7 @@ func NewLabourProfileUsecase(labourRepo database.LabourProfileRepository, userRe
 	}
 }
 
-func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateLabourProfileRequest) (*models.LabourProfile, error) {
+func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateLabourProfileRequest) (*labourModels.LabourProfile, error) {
 	// Check if user exists
 	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil {
@@ -49,11 +49,11 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 	}
 
 	// Create new profile
-	profile := &models.LabourProfile{
+	profile := &labourModels.LabourProfile{
 		UserID:    userID,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Location:  req.Location,
+		FirstName: &req.FirstName,
+		LastName:  &req.LastName,
+		Location:  &req.Location,
 		Bio:       req.Bio,
 		AvatarURL: req.AvatarURL,
 		CreatedAt: time.Now(),
@@ -66,7 +66,7 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 	}
 
 	// Update user role to labour
-	user.Role = models.UserRoleLabour
+	user.Role = authUserModels.UserRoleLabour
 	user.RoleChangedAt = &time.Time{}
 	*user.RoleChangedAt = time.Now()
 

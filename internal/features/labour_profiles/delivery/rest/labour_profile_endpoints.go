@@ -24,9 +24,15 @@ func NewLabourProfileHandler(labourProfileUsecase usecase.LabourProfileUsecase) 
 // CreateLabourProfile creates or updates a labour profile
 func (h *LabourProfileHandler) CreateLabourProfile(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by auth middleware)
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	userIDStr, ok := r.Context().Value("user_id").(string)
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
 		return
 	}
 
@@ -58,9 +64,9 @@ func (h *LabourProfileHandler) CreateLabourProfile(w http.ResponseWriter, r *htt
 	profileResp := payload.LabourProfileResponse{
 		ID:        profile.ID.String(),
 		UserID:    profile.UserID.String(),
-		FirstName: profile.FirstName,
-		LastName:  profile.LastName,
-		Location:  profile.Location,
+		FirstName: *profile.FirstName,
+		LastName:  *profile.LastName,
+		Location:  *profile.Location,
 		Bio:       profile.Bio,
 		AvatarURL: profile.AvatarURL,
 		CreatedAt: profile.CreatedAt,

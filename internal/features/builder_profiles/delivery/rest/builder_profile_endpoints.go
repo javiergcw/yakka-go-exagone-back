@@ -24,9 +24,15 @@ func NewBuilderProfileHandler(builderProfileUsecase usecase.BuilderProfileUsecas
 // CreateBuilderProfile creates or updates a builder profile
 func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by auth middleware)
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	userIDStr, ok := r.Context().Value("user_id").(string)
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+	
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
 		return
 	}
 
@@ -58,9 +64,9 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 	profileResp := payload.BuilderProfileResponse{
 		ID:          profile.ID.String(),
 		UserID:      profile.UserID.String(),
-		CompanyName: profile.CompanyName,
-		DisplayName: profile.DisplayName,
-		Location:    profile.Location,
+		CompanyName: *profile.CompanyName,
+		DisplayName: *profile.DisplayName,
+		Location:    *profile.Location,
 		Bio:         profile.Bio,
 		AvatarURL:   profile.AvatarURL,
 		CreatedAt:   profile.CreatedAt,

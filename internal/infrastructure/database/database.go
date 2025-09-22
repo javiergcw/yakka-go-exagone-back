@@ -10,6 +10,9 @@ import (
 	userSessionModels "github.com/yakka-backend/internal/features/auth/user_session/models"
 	builderProfileModels "github.com/yakka-backend/internal/features/builder_profiles/models"
 	labourProfileModels "github.com/yakka-backend/internal/features/labour_profiles/models"
+	experienceLevelModels "github.com/yakka-backend/internal/features/masters/experience_levels/models"
+	licenseModels "github.com/yakka-backend/internal/features/masters/licenses/models"
+	skillModels "github.com/yakka-backend/internal/features/masters/skills/models"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -59,14 +62,26 @@ func Migrate() error {
 		// Core user models
 		&authUserModels.User{},
 		&userSessionModels.Session{},
-		
+
 		// Authentication models
 		&emailVerificationModels.EmailVerification{},
 		&passwordResetModels.PasswordReset{},
-		
+
 		// Profile models
 		&builderProfileModels.BuilderProfile{},
 		&labourProfileModels.LabourProfile{},
+
+		// License models
+		&licenseModels.License{},
+
+		// Skill category models
+		&skillModels.SkillCategory{},
+
+		// Skill subcategory models
+		&skillModels.SkillSubcategory{},
+
+		// Experience level models
+		&experienceLevelModels.ExperienceLevel{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

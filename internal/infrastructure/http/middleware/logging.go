@@ -11,7 +11,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Create a custom ResponseWriter to capture status code
+		// Create a response writer wrapper to capture status code
 		wrapped := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 		// Call the next handler
@@ -19,7 +19,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 
 		// Log the request
 		duration := time.Since(start)
-		log.Printf("%s %s %d %v %s", r.Method, r.URL.Path, wrapped.statusCode, duration, r.RemoteAddr)
+		log.Printf("%s %s %d %v", r.Method, r.URL.Path, wrapped.statusCode, duration)
 	})
 }
 

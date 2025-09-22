@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/yakka-backend/http/middleware"
+	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/features/auth/email_verification/usecase"
 	"github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/auth/user/payload"

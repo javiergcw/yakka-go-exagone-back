@@ -23,6 +23,7 @@ func NewMiddlewareStack() *MiddlewareStack {
 func (ms *MiddlewareStack) Apply(handler http.Handler) http.Handler {
 	// Apply middleware in reverse order (last applied is first executed)
 	handler = ms.rateLimiter.RateLimitMiddleware(handler)
+	handler = AuthMiddleware(handler)
 	handler = LoggingMiddleware(handler)
 	handler = RecoveryMiddleware(handler)
 	handler = CORS(ms.corsConfig)(handler)

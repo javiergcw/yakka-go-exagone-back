@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/yakka-backend/http/middleware"
+	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/features/auth/user_session/payload"
 	"github.com/yakka-backend/internal/features/auth/user_session/usecase"
 	"github.com/yakka-backend/internal/shared/response"
