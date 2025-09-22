@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	authUserRepo "github.com/yakka-backend/internal/features/auth/user/entity/database"
 	authUserModels "github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labourModels "github.com/yakka-backend/internal/features/labour_profiles/models"
 	"github.com/yakka-backend/internal/features/labour_profiles/payload"
-	authUserRepo "github.com/yakka-backend/internal/features/auth/user/entity/database"
 	"gorm.io/gorm"
 )
 
@@ -26,7 +26,7 @@ type labourProfileUsecase struct {
 func NewLabourProfileUsecase(labourRepo database.LabourProfileRepository, userRepo authUserRepo.UserRepository) LabourProfileUsecase {
 	return &labourProfileUsecase{
 		labourRepo: labourRepo,
-		userRepo:    userRepo,
+		userRepo:   userRepo,
 	}
 }
 
@@ -51,11 +51,8 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 	// Create new profile
 	profile := &labourModels.LabourProfile{
 		UserID:    userID,
-		FirstName: &req.FirstName,
-		LastName:  &req.LastName,
 		Location:  &req.Location,
 		Bio:       req.Bio,
-		AvatarURL: req.AvatarURL,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
@@ -69,6 +66,11 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 	user.Role = authUserModels.UserRoleLabour
 	user.RoleChangedAt = &time.Time{}
 	*user.RoleChangedAt = time.Now()
+
+	// Update user fields that are now in the user table
+	user.FirstName = &req.FirstName
+	user.LastName = &req.LastName
+	user.Photo = req.AvatarURL
 
 	// Update user phone if provided
 	if req.Phone != nil {

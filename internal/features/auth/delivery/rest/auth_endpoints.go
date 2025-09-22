@@ -6,11 +6,11 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/features/auth/email_verification/usecase"
 	"github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/auth/user/payload"
 	auth_user_usecase "github.com/yakka-backend/internal/features/auth/user/usecase"
+	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 	"github.com/yakka-backend/internal/shared/validation"
 )
@@ -88,6 +88,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	userResp := payload.RegisterUserResponse{
 		ID:            user.ID.String(),
 		Email:         user.Email,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -150,6 +154,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		ID:            user.ID.String(),
 		Email:         user.Email,
 		Phone:         user.Phone,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -182,10 +190,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	resp := payload.LoginResponse{
 		User:         userResp,
-		AccessToken:    accessToken,
-		RefreshToken:   refreshToken,
-		ExpiresIn:      expiresIn,
-		Profiles:       profileInfo,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
+		Profiles:     profileInfo,
 	}
 
 	response.WriteJSON(w, http.StatusOK, resp)
@@ -219,6 +227,10 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		ID:            user.ID.String(),
 		Email:         user.Email,
 		Phone:         user.Phone,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -263,6 +275,18 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	if req.Phone != nil {
 		user.Phone = req.Phone
 	}
+	if req.FirstName != nil {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != nil {
+		user.LastName = req.LastName
+	}
+	if req.Address != nil {
+		user.Address = req.Address
+	}
+	if req.Photo != nil {
+		user.Photo = req.Photo
+	}
 
 	// Update user
 	err = h.authUsecase.UpdateUser(r.Context(), user)
@@ -284,6 +308,10 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		ID:            user.ID.String(),
 		Email:         user.Email,
 		Phone:         user.Phone,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,

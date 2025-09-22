@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"time"
 
@@ -29,32 +30,86 @@ func main() {
 	// Sample licenses
 	licenses := []*licenseModels.License{
 		{
-			Name:        "Licencia de Conducir",
-			Description: "Permiso para conducir vehículos automotores",
+			Name:        "Driving Licence",
+			Description: "Official license to operate motor vehicles legally",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
 		{
-			Name:        "Licencia de Construcción",
-			Description: "Permiso para realizar trabajos de construcción",
+			Name:        "Work with Children",
+			Description: "Certification required to work with children in various settings",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
 		{
-			Name:        "Licencia de Electricista",
-			Description: "Certificación para trabajos eléctricos",
+			Name:        "SIS20122 – Certificate II in Sport and Recreation",
+			Description: "Entry-level qualification for sport and recreation industry",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
 		{
-			Name:        "Licencia de Plomería",
-			Description: "Certificación para trabajos de plomería",
+			Name:        "SIS20321 – Certificate II in Sport Coaching",
+			Description: "Foundation qualification for sport coaching roles",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
 		{
-			Name:        "Licencia de Seguridad",
-			Description: "Certificación en seguridad laboral",
+			Name:        "SIS30122 – Certificate III in Sport, Aquatics and Recreation",
+			Description: "Intermediate qualification in sport, aquatics and recreation management",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "SIS30521 – Certificate III in Sport Coaching",
+			Description: "Advanced coaching qualification for sport professionals",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "SIS40321 – Certificate IV in Sport Coaching",
+			Description: "Senior coaching qualification for leadership roles",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "SIS50321 – Diploma of Sport",
+			Description: "Comprehensive diploma program in sport management and coaching",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "SIS50122 – Diploma of Sport, Aquatics and Recreation Management",
+			Description: "Specialized diploma in sport, aquatics and recreation management",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "Diploma of Sport & Exercise Science (provider specific)",
+			Description: "Provider-specific diploma in sport and exercise science",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "Bachelor Degree in Sport Science",
+			Description: "Undergraduate degree in sport science and related fields",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "Bachelor Honours",
+			Description: "Honours degree in sport science with research component",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "Master's Degree in Sport",
+			Description: "Postgraduate degree in sport science and management",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		},
+		{
+			Name:        "Doctoral Degree (PhD) in Sport",
+			Description: "Highest academic qualification in sport science and research",
 			CreatedAt:   time.Now(),
 			UpdatedAt:   time.Now(),
 		},
@@ -62,7 +117,7 @@ func main() {
 
 	// Insert licenses
 	for _, license := range licenses {
-		if err := licenseRepository.Create(nil, license); err != nil {
+		if err := licenseRepository.Create(context.TODO(), license); err != nil {
 			log.Printf("Failed to create license %s: %v", license.Name, err)
 		} else {
 			log.Printf("✅ Created license: %s", license.Name)

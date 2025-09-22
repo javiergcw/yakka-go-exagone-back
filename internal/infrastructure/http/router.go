@@ -9,18 +9,26 @@ import (
 	auth_rest "github.com/yakka-backend/internal/features/auth/delivery/rest"
 	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
+	experience_level_rest "github.com/yakka-backend/internal/features/masters/experience_levels/delivery/rest"
+	license_rest "github.com/yakka-backend/internal/features/masters/licenses/delivery/rest"
+	skill_category_rest "github.com/yakka-backend/internal/features/masters/skills/delivery/rest"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 )
 
 // Router sets up the HTTP routes
 type Router struct {
-	authHandler         *auth_rest.AuthHandler
-	sessionHandler      *auth_rest.SessionHandler
-	passwordHandler     *auth_rest.PasswordHandler
-	emailHandler        *auth_rest.EmailHandler
-	labourProfileHandler *labour_rest.LabourProfileHandler
-	builderProfileHandler *builder_rest.BuilderProfileHandler
+	authHandler             *auth_rest.AuthHandler
+	sessionHandler          *auth_rest.SessionHandler
+	passwordHandler         *auth_rest.PasswordHandler
+	emailHandler            *auth_rest.EmailHandler
+	labourProfileHandler    *labour_rest.LabourProfileHandler
+	builderProfileHandler   *builder_rest.BuilderProfileHandler
+	licenseHandler          *license_rest.LicenseHandler
+	experienceLevelHandler  *experience_level_rest.ExperienceLevelHandler
+	skillCategoryHandler    *skill_category_rest.SkillCategoryHandler
+	skillSubcategoryHandler *skill_category_rest.SkillSubcategoryHandler
+	skillCompleteHandler    *skill_category_rest.SkillCompleteHandler
 }
 
 // NewRouter creates a new router
@@ -33,12 +41,17 @@ func NewRouter(
 	builderProfileHandler *builder_rest.BuilderProfileHandler,
 ) *Router {
 	return &Router{
-		authHandler:          authHandler,
-		sessionHandler:       sessionHandler,
-		passwordHandler:      passwordHandler,
-		emailHandler:         emailHandler,
-		labourProfileHandler: labourProfileHandler,
-		builderProfileHandler: builderProfileHandler,
+		authHandler:             authHandler,
+		sessionHandler:          sessionHandler,
+		passwordHandler:         passwordHandler,
+		emailHandler:            emailHandler,
+		labourProfileHandler:    labourProfileHandler,
+		builderProfileHandler:   builderProfileHandler,
+		licenseHandler:          license_rest.NewLicenseHandler(),
+		experienceLevelHandler:  experience_level_rest.NewExperienceLevelHandler(),
+		skillCategoryHandler:    skill_category_rest.NewSkillCategoryHandler(),
+		skillSubcategoryHandler: skill_category_rest.NewSkillSubcategoryHandler(),
+		skillCompleteHandler:    skill_category_rest.NewSkillCompleteHandler(),
 	}
 }
 
@@ -71,8 +84,12 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.HandleFunc("/profiles/builder", r.builderProfileHandler.CreateBuilderProfile).Methods("POST")
 
 	// Master tables endpoints (require license)
-	api.Handle("/licenses", middleware.LicenseMiddleware(http.HandlerFunc(r.getLicenses))).Methods("GET")
-	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.getSkills))).Methods("GET")
+	api.Handle("/licenses", middleware.LicenseMiddleware(http.HandlerFunc(r.licenseHandler.GetLicenses))).Methods("GET")
+	api.Handle("/experience-levels", middleware.LicenseMiddleware(http.HandlerFunc(r.experienceLevelHandler.GetExperienceLevels))).Methods("GET")
+	api.Handle("/skill-categories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCategoryHandler.GetSkillCategories))).Methods("GET")
+	api.Handle("/skill-subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategories))).Methods("GET")
+	api.Handle("/skill-categories/{categoryId}/subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategoriesByCategory))).Methods("GET")
+	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCompleteHandler.GetSkillsComplete))).Methods("GET")
 
 	// Apply middleware stack (includes auth middleware)
 	middlewareStack := middleware.NewMiddlewareStack()
@@ -89,66 +106,10 @@ func (r *Router) healthCheck(w http.ResponseWriter, req *http.Request) {
 		Timestamp: time.Now().Format(time.RFC3339),
 		Version:   "1.0.0",
 		Data: map[string]interface{}{
-			"uptime": "running",
+			"uptime":  "running",
 			"license": "YAKKA-PROD-2024-8F9E2A1B-3C4D5E6F-7A8B9C0D-1E2F3A4B", // License for master tables endpoints
 		},
 	}
 
 	response.WriteJSON(w, http.StatusOK, healthResp)
-}
-
-// getLicenses returns all licenses (requires license header)
-func (r *Router) getLicenses(w http.ResponseWriter, req *http.Request) {
-	// This would typically fetch from database
-	licenses := []map[string]interface{}{
-		{
-			"id":          "1",
-			"name":        "Licencia de Conducir",
-			"description": "Permiso para conducir vehículos automotores",
-		},
-		{
-			"id":          "2", 
-			"name":        "Licencia de Construcción",
-			"description": "Permiso para realizar trabajos de construcción",
-		},
-		{
-			"id":          "3",
-			"name":        "Licencia de Electricista", 
-			"description": "Certificación para trabajos eléctricos",
-		},
-	}
-
-	response.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    licenses,
-		"message": "Licenses retrieved successfully",
-	})
-}
-
-// getSkills returns all skills (requires license header)
-func (r *Router) getSkills(w http.ResponseWriter, req *http.Request) {
-	// This would typically fetch from database
-	skills := []map[string]interface{}{
-		{
-			"id":          "1",
-			"name":        "Albañilería",
-			"description": "Construcción con ladrillos, bloques y mortero",
-		},
-		{
-			"id":          "2",
-			"name":        "Carpintería", 
-			"description": "Trabajos con madera y estructuras de madera",
-		},
-		{
-			"id":          "3",
-			"name":        "Electricidad",
-			"description": "Instalaciones y reparaciones eléctricas",
-		},
-	}
-
-	response.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    skills,
-		"message": "Skills retrieved successfully",
-	})
 }

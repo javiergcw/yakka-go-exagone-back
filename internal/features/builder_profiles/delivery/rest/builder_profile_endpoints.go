@@ -29,7 +29,7 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
-	
+
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
@@ -68,7 +68,7 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 		DisplayName: *profile.DisplayName,
 		Location:    *profile.Location,
 		Bio:         profile.Bio,
-		AvatarURL:   profile.AvatarURL,
+		AvatarURL:   req.AvatarURL, // Usar datos del request ya que están en el usuario
 		CreatedAt:   profile.CreatedAt,
 		UpdatedAt:   profile.UpdatedAt,
 	}
@@ -80,4 +80,3 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 
 	response.WriteJSON(w, http.StatusCreated, resp)
 }
-

@@ -7,6 +7,10 @@ type UserResponse struct {
 	ID            string     `json:"id"`
 	Email         string     `json:"email"`
 	Phone         *string    `json:"phone"`
+	FirstName     *string    `json:"first_name"`
+	LastName      *string    `json:"last_name"`
+	Address       *string    `json:"address"`
+	Photo         *string    `json:"photo"`
 	Status        string     `json:"status"`
 	Role          string     `json:"role"`
 	LastLoginAt   *time.Time `json:"last_login_at"`
@@ -35,6 +39,10 @@ type ProfileInfo struct {
 type RegisterUserResponse struct {
 	ID            string     `json:"id"`
 	Email         string     `json:"email"`
+	FirstName     *string    `json:"first_name"`
+	LastName      *string    `json:"last_name"`
+	Address       *string    `json:"address"`
+	Photo         *string    `json:"photo"`
 	Status        string     `json:"status"`
 	Role          string     `json:"role"`
 	LastLoginAt   *time.Time `json:"last_login_at"`

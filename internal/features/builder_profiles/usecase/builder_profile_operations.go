@@ -55,7 +55,6 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 		DisplayName: &req.DisplayName,
 		Location:    &req.Location,
 		Bio:         req.Bio,
-		AvatarURL:   req.AvatarURL,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -69,6 +68,9 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 	user.Role = authUserModels.UserRoleBuilder
 	user.RoleChangedAt = &time.Time{}
 	*user.RoleChangedAt = time.Now()
+
+	// Update user fields that are now in the user table
+	user.Photo = req.AvatarURL
 
 	// Update user phone if provided
 	if req.Phone != nil {

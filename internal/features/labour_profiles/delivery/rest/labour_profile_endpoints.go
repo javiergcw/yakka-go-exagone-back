@@ -29,7 +29,7 @@ func (h *LabourProfileHandler) CreateLabourProfile(w http.ResponseWriter, r *htt
 		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
 		return
 	}
-	
+
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
@@ -64,11 +64,11 @@ func (h *LabourProfileHandler) CreateLabourProfile(w http.ResponseWriter, r *htt
 	profileResp := payload.LabourProfileResponse{
 		ID:        profile.ID.String(),
 		UserID:    profile.UserID.String(),
-		FirstName: *profile.FirstName,
-		LastName:  *profile.LastName,
+		FirstName: req.FirstName, // Usar datos del request ya que están en el usuario
+		LastName:  req.LastName,  // Usar datos del request ya que están en el usuario
 		Location:  *profile.Location,
 		Bio:       profile.Bio,
-		AvatarURL: profile.AvatarURL,
+		AvatarURL: req.AvatarURL, // Usar datos del request ya que están en el usuario
 		CreatedAt: profile.CreatedAt,
 		UpdatedAt: profile.UpdatedAt,
 	}
@@ -80,4 +80,3 @@ func (h *LabourProfileHandler) CreateLabourProfile(w http.ResponseWriter, r *htt
 
 	response.WriteJSON(w, http.StatusCreated, resp)
 }
-
