@@ -14,16 +14,6 @@ services:
     # Environment variables
     env_file:
       - .env.dev
-    environment:
-      - DB_HOST=46.250.240.33
-      - DB_PORT=5548
-      - DB_USER=postgres
-      - DB_PASSWORD=C0mpl3xSup3rP@ss!20392
-      - DB_NAME=yakkadev
-      - DB_SSLMODE=disable
-      - PORT=8081
-      - ENVIRONMENT=development
-      - LOG_LEVEL=warn
     
     # Restart policy
     restart: unless-stopped
