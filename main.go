@@ -18,6 +18,9 @@ import (
 	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
 	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_usecase "github.com/yakka-backend/internal/features/builder_profiles/usecase"
+	jobsite_rest "github.com/yakka-backend/internal/features/jobsites/delivery/rest"
+	jobsite_db "github.com/yakka-backend/internal/features/jobsites/entity/database"
+	jobsite_usecase "github.com/yakka-backend/internal/features/jobsites/usecase"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
 	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
@@ -63,6 +66,7 @@ func main() {
 	authEmailRepo := auth_email_db.NewEmailVerificationRepository(database.DB)
 	builderRepo := builder_db.NewBuilderProfileRepository(database.DB)
 	labourRepo := labour_db.NewLabourProfileRepository(database.DB)
+	jobsiteRepo := jobsite_db.NewJobsiteRepositoryImpl(database.DB)
 
 	// Initialize use cases
 	authUserUseCase := auth_user_usecase.NewAuthUsecase(authUserRepo, builderRepo, labourRepo)
@@ -77,6 +81,7 @@ func main() {
 	experienceRepo := experience_db.NewExperienceLevelRepository(database.DB)
 	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, experienceRepo)
 	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo, licenseRepo)
+	jobsiteUseCase := jobsite_usecase.NewJobsiteUsecaseImpl(jobsiteRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
@@ -85,9 +90,10 @@ func main() {
 	emailHandler := auth_rest.NewEmailHandler(authEmailUseCase)
 	labourProfileHandler := labour_rest.NewLabourProfileHandler(labourProfileUseCase)
 	builderProfileHandler := builder_rest.NewBuilderProfileHandler(builderProfileUseCase)
+	jobsiteHandler := jobsite_rest.NewJobsiteHandler(jobsiteUseCase)
 
 	// Initialize router
-	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler)
+	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler)
 	httpRouter := router.SetupRoutes()
 
 	// Start server

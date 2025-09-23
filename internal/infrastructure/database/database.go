@@ -9,6 +9,7 @@ import (
 	authUserModels "github.com/yakka-backend/internal/features/auth/user/models"
 	userSessionModels "github.com/yakka-backend/internal/features/auth/user_session/models"
 	builderProfileModels "github.com/yakka-backend/internal/features/builder_profiles/models"
+	jobsiteModels "github.com/yakka-backend/internal/features/jobsites/models"
 	labourProfileModels "github.com/yakka-backend/internal/features/labour_profiles/models"
 	experienceLevelModels "github.com/yakka-backend/internal/features/masters/experience_levels/models"
 	licenseModels "github.com/yakka-backend/internal/features/masters/licenses/models"
@@ -85,6 +86,9 @@ func Migrate() error {
 		&builderProfileModels.BuilderProfile{},
 		&labourProfileModels.LabourProfile{},
 		&labourProfileModels.LabourProfileSkill{},
+
+		// Jobsite models
+		&jobsiteModels.Jobsite{},
 
 		// User license models
 		&authUserModels.UserLicense{},
