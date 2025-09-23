@@ -7,9 +7,9 @@ services:
     build: .
     container_name: yakka-backend
     
-    # Port mapping (external:internal)
-    ports:
-      - "8081:8080"
+    # Port mapping (using host network)
+    # ports:
+    #   - "8081:8080"
     
     # Environment variables
     env_file:
@@ -21,7 +21,7 @@ services:
       - DB_PASSWORD=C0mpl3xSup3rP@ss!20392
       - DB_NAME=yakkadev
       - DB_SSLMODE=disable
-      - PORT=8080
+      - PORT=8081
       - ENVIRONMENT=development
       - LOG_LEVEL=warn
     
@@ -37,8 +37,7 @@ services:
       start_period: 40s
     
     # Network configuration
-    networks:
-      - yakka-network
+    network_mode: host
 
 # Network definitions
 networks:
