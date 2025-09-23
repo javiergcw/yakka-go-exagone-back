@@ -32,6 +32,10 @@ type User struct {
 	Email         string     `json:"email" gorm:"uniqueIndex;not null;size:255"`
 	Phone         *string    `json:"phone" gorm:"size:32"`
 	PasswordHash  string     `json:"-" gorm:"not null;type:text"`
+	FirstName     *string    `json:"first_name" gorm:"size:120"`
+	LastName      *string    `json:"last_name" gorm:"size:120"`
+	Address       *string    `json:"address" gorm:"type:text"`
+	Photo         *string    `json:"photo" gorm:"type:text"`
 	Status        UserStatus `json:"status" gorm:"not null;type:user_status"`
 	LastLoginAt   *time.Time `json:"last_login_at" gorm:"type:timestamptz"`
 	CreatedAt     time.Time  `json:"created_at" gorm:"not null;type:timestamptz"`

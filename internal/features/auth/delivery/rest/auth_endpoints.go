@@ -4,28 +4,41 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
-	"github.com/yakka-backend/http/middleware"
 	"github.com/yakka-backend/internal/features/auth/email_verification/usecase"
 	"github.com/yakka-backend/internal/features/auth/user/models"
 	"github.com/yakka-backend/internal/features/auth/user/payload"
 	auth_user_usecase "github.com/yakka-backend/internal/features/auth/user/usecase"
+	builder_usecase "github.com/yakka-backend/internal/features/builder_profiles/usecase"
+	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
+	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 	"github.com/yakka-backend/internal/shared/validation"
+	"gorm.io/gorm"
 )
 
 // AuthHandler handles authentication endpoints
 type AuthHandler struct {
 	authUsecase              auth_user_usecase.AuthUsecase
 	emailVerificationUsecase usecase.EmailVerificationUsecase
+	builderProfileUsecase    builder_usecase.BuilderProfileUsecase
+	labourProfileUsecase     labour_usecase.LabourProfileUsecase
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(authUsecase auth_user_usecase.AuthUsecase, emailVerificationUsecase usecase.EmailVerificationUsecase) *AuthHandler {
+func NewAuthHandler(
+	authUsecase auth_user_usecase.AuthUsecase,
+	emailVerificationUsecase usecase.EmailVerificationUsecase,
+	builderProfileUsecase builder_usecase.BuilderProfileUsecase,
+	labourProfileUsecase labour_usecase.LabourProfileUsecase,
+) *AuthHandler {
 	return &AuthHandler{
 		authUsecase:              authUsecase,
 		emailVerificationUsecase: emailVerificationUsecase,
+		builderProfileUsecase:    builderProfileUsecase,
+		labourProfileUsecase:     labourProfileUsecase,
 	}
 }
 
@@ -88,6 +101,10 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	userResp := payload.RegisterUserResponse{
 		ID:            user.ID.String(),
 		Email:         user.Email,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -150,6 +167,10 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		ID:            user.ID.String(),
 		Email:         user.Email,
 		Phone:         user.Phone,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -161,9 +182,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Generate JWT access token
 	accessToken, err := middleware.GenerateJWTToken(user.ID.String())
 	if err != nil {
+		log.Printf("❌ Failed to generate JWT token: %v", err)
 		response.WriteError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
+
+	log.Printf("✅ JWT token generated successfully for user: %s", user.ID.String())
 
 	// Get user profile information
 	profileInfo, err := h.authUsecase.GetUserProfileInfo(r.Context(), user.ID)
@@ -182,19 +206,19 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	resp := payload.LoginResponse{
 		User:         userResp,
-		AccessToken:    accessToken,
-		RefreshToken:   refreshToken,
-		ExpiresIn:      expiresIn,
-		Profiles:       profileInfo,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    expiresIn,
+		Profiles:     profileInfo,
 	}
 
 	response.WriteJSON(w, http.StatusOK, resp)
 }
 
-// GetProfile handles getting user profile
+// GetProfile handles getting complete user profile with all profiles
 func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by auth middleware)
-	userIDStr := r.Context().Value("user_id").(string)
+	userIDStr := r.Context().Value(middleware.UserIDKey).(string)
 	userID, err := uuid.Parse(userIDStr)
 	if err != nil {
 		response.WriteError(w, http.StatusBadRequest, "Invalid user ID")
@@ -214,11 +238,15 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to response
+	// Convert user to response
 	userResp := payload.UserResponse{
 		ID:            user.ID.String(),
 		Email:         user.Email,
 		Phone:         user.Phone,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,
@@ -227,7 +255,59 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		RoleChangedAt: user.RoleChangedAt,
 	}
 
-	response.WriteJSON(w, http.StatusOK, userResp)
+	// Initialize response
+	completeResp := payload.CompleteProfileResponse{
+		User:              userResp,
+		CurrentRole:       string(user.Role),
+		HasBuilderProfile: false,
+		HasLabourProfile:  false,
+		BuilderProfile:    nil,
+		LabourProfile:     nil,
+	}
+
+	// Try to get builder profile
+	builderProfile, err := h.builderProfileUsecase.GetProfileByUserID(r.Context(), userID)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		log.Printf("Error getting builder profile: %v", err)
+		// Set empty builder profile on error
+		completeResp.BuilderProfile = &payload.BuilderProfileInfo{}
+	} else if err == nil && builderProfile != nil {
+		completeResp.HasBuilderProfile = true
+		completeResp.BuilderProfile = &payload.BuilderProfileInfo{
+			ID:          builderProfile.ID.String(),
+			CompanyName: builderProfile.CompanyName,
+			DisplayName: builderProfile.DisplayName,
+			Location:    builderProfile.Location,
+			Bio:         builderProfile.Bio,
+			CreatedAt:   builderProfile.CreatedAt.Format(time.RFC3339),
+			UpdatedAt:   builderProfile.UpdatedAt.Format(time.RFC3339),
+		}
+	} else {
+		// No builder profile found, set empty
+		completeResp.BuilderProfile = &payload.BuilderProfileInfo{}
+	}
+
+	// Try to get labour profile
+	labourProfile, err := h.labourProfileUsecase.GetProfileByUserID(r.Context(), userID)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		log.Printf("Error getting labour profile: %v", err)
+		// Set empty labour profile on error
+		completeResp.LabourProfile = &payload.LabourProfileInfo{}
+	} else if err == nil && labourProfile != nil {
+		completeResp.HasLabourProfile = true
+		completeResp.LabourProfile = &payload.LabourProfileInfo{
+			ID:        labourProfile.ID.String(),
+			Location:  labourProfile.Location,
+			Bio:       labourProfile.Bio,
+			CreatedAt: labourProfile.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: labourProfile.UpdatedAt.Format(time.RFC3339),
+		}
+	} else {
+		// No labour profile found, set empty
+		completeResp.LabourProfile = &payload.LabourProfileInfo{}
+	}
+
+	response.WriteJSON(w, http.StatusOK, completeResp)
 }
 
 // UpdateProfile handles updating user profile
@@ -263,6 +343,18 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	if req.Phone != nil {
 		user.Phone = req.Phone
 	}
+	if req.FirstName != nil {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != nil {
+		user.LastName = req.LastName
+	}
+	if req.Address != nil {
+		user.Address = req.Address
+	}
+	if req.Photo != nil {
+		user.Photo = req.Photo
+	}
 
 	// Update user
 	err = h.authUsecase.UpdateUser(r.Context(), user)
@@ -284,6 +376,10 @@ func (h *AuthHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 		ID:            user.ID.String(),
 		Email:         user.Email,
 		Phone:         user.Phone,
+		FirstName:     user.FirstName,
+		LastName:      user.LastName,
+		Address:       user.Address,
+		Photo:         user.Photo,
 		Status:        string(user.Status),
 		Role:          string(user.Role),
 		LastLoginAt:   user.LastLoginAt,

@@ -14,7 +14,6 @@ type BuilderProfile struct {
 	DisplayName *string   `json:"display_name" gorm:"size:255"`
 	Location    *string   `json:"location" gorm:"size:255"`
 	Bio         *string   `json:"bio" gorm:"type:text"`
-	AvatarURL   *string   `json:"avatar_url" gorm:"type:text"`
 	CreatedAt   time.Time `json:"created_at" gorm:"not null;type:timestamptz"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"not null;type:timestamptz"`
 }

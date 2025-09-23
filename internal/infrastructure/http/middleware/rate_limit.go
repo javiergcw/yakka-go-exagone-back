@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// RateLimiter implements a simple rate limiter
+// RateLimiter implements rate limiting
 type RateLimiter struct {
 	requests map[string][]time.Time
 	mu       sync.RWMutex
@@ -23,14 +23,14 @@ func NewRateLimiter(limit int, window time.Duration) *RateLimiter {
 	}
 }
 
-// RateLimitMiddleware limits requests per IP
+// RateLimitMiddleware applies rate limiting
 func (rl *RateLimiter) RateLimitMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		clientIP := r.RemoteAddr
+		clientIP := getClientIP(r)
 		
 		rl.mu.Lock()
 		defer rl.mu.Unlock()
-		
+
 		now := time.Now()
 		
 		// Clean old requests
@@ -43,16 +43,32 @@ func (rl *RateLimiter) RateLimitMiddleware(next http.Handler) http.Handler {
 			}
 			rl.requests[clientIP] = validRequests
 		}
-		
+
 		// Check if limit exceeded
 		if len(rl.requests[clientIP]) >= rl.limit {
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return
 		}
-		
+
 		// Add current request
 		rl.requests[clientIP] = append(rl.requests[clientIP], now)
-		
+
 		next.ServeHTTP(w, r)
 	})
+}
+
+// getClientIP extracts the client IP from the request
+func getClientIP(r *http.Request) string {
+	// Check X-Forwarded-For header first
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return xff
+	}
+	
+	// Check X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+	
+	// Fallback to RemoteAddr
+	return r.RemoteAddr
 }

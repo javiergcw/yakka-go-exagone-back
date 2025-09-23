@@ -22,5 +22,9 @@ type ChangePasswordRequest struct {
 
 // UpdateUserRequest represents a user update request
 type UpdateUserRequest struct {
-	Phone *string `json:"phone,omitempty"`
+	Phone     *string `json:"phone,omitempty"`
+	FirstName *string `json:"first_name,omitempty"`
+	LastName  *string `json:"last_name,omitempty"`
+	Address   *string `json:"address,omitempty"`
+	Photo     *string `json:"photo,omitempty"`
 }

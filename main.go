@@ -15,12 +15,15 @@ import (
 	auth_user_usecase "github.com/yakka-backend/internal/features/auth/user/usecase"
 	auth_session_db "github.com/yakka-backend/internal/features/auth/user_session/entity/database"
 	auth_session_usecase "github.com/yakka-backend/internal/features/auth/user_session/usecase"
-	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
+	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_usecase "github.com/yakka-backend/internal/features/builder_profiles/usecase"
-	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
+	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
+	experience_db "github.com/yakka-backend/internal/features/masters/experience_levels/entity/database"
+	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
+	skill_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"github.com/yakka-backend/internal/infrastructure/database"
 	httpRouter "github.com/yakka-backend/internal/infrastructure/http"
@@ -66,11 +69,17 @@ func main() {
 	authSessionUseCase := auth_session_usecase.NewSessionUsecase(authSessionRepo)
 	authPasswordUseCase := auth_password_usecase.NewPasswordResetUsecase(authPasswordRepo)
 	authEmailUseCase := auth_email_usecase.NewEmailVerificationUsecase(authEmailRepo, authUserRepo)
-	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, authUserRepo)
-	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, authUserRepo)
+	labourSkillRepo := labour_db.NewLabourProfileSkillRepository(database.DB)
+	userLicenseRepo := auth_user_db.NewUserLicenseRepository(database.DB)
+	licenseRepo := license_db.NewLicenseRepository(database.DB)
+	skillCategoryRepo := skill_db.NewSkillCategoryRepository(database.DB)
+	skillSubcategoryRepo := skill_db.NewSkillSubcategoryRepository(database.DB)
+	experienceRepo := experience_db.NewExperienceLevelRepository(database.DB)
+	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, experienceRepo)
+	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo, licenseRepo)
 
 	// Initialize handlers
-	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase)
+	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
 	sessionHandler := auth_rest.NewSessionHandler(authSessionUseCase)
 	passwordHandler := auth_rest.NewPasswordHandler(authPasswordUseCase)
 	emailHandler := auth_rest.NewEmailHandler(authEmailUseCase)

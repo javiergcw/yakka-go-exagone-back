@@ -10,6 +10,9 @@ import (
 	userSessionModels "github.com/yakka-backend/internal/features/auth/user_session/models"
 	builderProfileModels "github.com/yakka-backend/internal/features/builder_profiles/models"
 	labourProfileModels "github.com/yakka-backend/internal/features/labour_profiles/models"
+	experienceLevelModels "github.com/yakka-backend/internal/features/masters/experience_levels/models"
+	licenseModels "github.com/yakka-backend/internal/features/masters/licenses/models"
+	skillModels "github.com/yakka-backend/internal/features/masters/skills/models"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -32,11 +35,25 @@ func Connect(cfg *config.Config) error {
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Warn), // Reduce logging for performance
+		// Performance optimizations
+		PrepareStmt:                              true, // Enable prepared statements
+		DisableForeignKeyConstraintWhenMigrating: true, // Faster migrations
 	})
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
+
+	// Configure connection pool for better performance
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
+
+	// Set connection pool settings
+	sqlDB.SetMaxIdleConns(10)   // Maximum number of idle connections
+	sqlDB.SetMaxOpenConns(100)  // Maximum number of open connections
+	sqlDB.SetConnMaxLifetime(0) // Connection lifetime (0 = unlimited)
 
 	log.Println("✅ Database connected successfully")
 	return nil
@@ -59,14 +76,30 @@ func Migrate() error {
 		// Core user models
 		&authUserModels.User{},
 		&userSessionModels.Session{},
-		
+
 		// Authentication models
 		&emailVerificationModels.EmailVerification{},
 		&passwordResetModels.PasswordReset{},
-		
+
 		// Profile models
 		&builderProfileModels.BuilderProfile{},
 		&labourProfileModels.LabourProfile{},
+		&labourProfileModels.LabourProfileSkill{},
+
+		// User license models
+		&authUserModels.UserLicense{},
+
+		// License models
+		&licenseModels.License{},
+
+		// Skill category models
+		&skillModels.SkillCategory{},
+
+		// Skill subcategory models
+		&skillModels.SkillSubcategory{},
+
+		// Experience level models
+		&experienceLevelModels.ExperienceLevel{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

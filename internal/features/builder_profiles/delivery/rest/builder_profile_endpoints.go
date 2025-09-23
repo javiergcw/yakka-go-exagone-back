@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yakka-backend/internal/features/builder_profiles/payload"
 	"github.com/yakka-backend/internal/features/builder_profiles/usecase"
+	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 	"github.com/yakka-backend/internal/shared/validation"
 )
@@ -24,9 +25,15 @@ func NewBuilderProfileHandler(builderProfileUsecase usecase.BuilderProfileUsecas
 // CreateBuilderProfile creates or updates a builder profile
 func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by auth middleware)
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
 		return
 	}
 
@@ -50,6 +57,20 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 			response.WriteError(w, http.StatusConflict, "Builder profile already exists for this user")
 			return
 		}
+
+		// Check for validation errors (UUID not found)
+		if err.Error() == "license not found" {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Check for invalid UUID format
+		if err.Error() == "invalid license_id" {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Generic error for other cases
 		response.WriteError(w, http.StatusInternalServerError, "Failed to create builder profile")
 		return
 	}
@@ -58,11 +79,11 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 	profileResp := payload.BuilderProfileResponse{
 		ID:          profile.ID.String(),
 		UserID:      profile.UserID.String(),
-		CompanyName: profile.CompanyName,
-		DisplayName: profile.DisplayName,
-		Location:    profile.Location,
+		CompanyName: *profile.CompanyName,
+		DisplayName: *profile.DisplayName,
+		Location:    *profile.Location,
 		Bio:         profile.Bio,
-		AvatarURL:   profile.AvatarURL,
+		AvatarURL:   req.AvatarURL, // Usar datos del request ya que están en el usuario
 		CreatedAt:   profile.CreatedAt,
 		UpdatedAt:   profile.UpdatedAt,
 	}
@@ -74,4 +95,3 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 
 	response.WriteJSON(w, http.StatusCreated, resp)
 }
-
