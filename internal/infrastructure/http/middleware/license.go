@@ -10,12 +10,6 @@ import (
 // LicenseMiddleware validates license for endpoints
 func LicenseMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip license validation for health check and public endpoints
-		if isPublicEndpoint(r.URL.Path) {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		// Get License header
 		licenseHeader := r.Header.Get("X-License")
 		if licenseHeader == "" {
@@ -33,13 +27,12 @@ func LicenseMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-
 // isValidLicense validates the license key
 func isValidLicense(license string) bool {
 	license = strings.TrimSpace(license)
-	
+
 	// Check for the specific production license
 	validLicense := "YAKKA-PROD-2024-8F9E2A1B-3C4D5E6F-7A8B9C0D-1E2F3A4B"
-	
+
 	return license == validLicense
 }

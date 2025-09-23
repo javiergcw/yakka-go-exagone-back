@@ -23,12 +23,28 @@ func NewMiddlewareStack() *MiddlewareStack {
 func (ms *MiddlewareStack) Apply(handler http.Handler) http.Handler {
 	// Apply middleware in reverse order (last applied is first executed)
 	handler = ms.rateLimiter.RateLimitMiddleware(handler)
-	handler = AuthMiddleware(handler)
 	handler = LoggingMiddleware(handler)
 	handler = RecoveryMiddleware(handler)
 	handler = CORS(ms.corsConfig)(handler)
 
 	return handler
+}
+
+// ApplyWithAuth applies middleware including authentication
+func (ms *MiddlewareStack) ApplyWithAuth(handler http.Handler) http.Handler {
+	handler = AuthMiddleware(handler)
+	return ms.Apply(handler)
+}
+
+// ApplyWithLicense applies middleware including license validation
+func (ms *MiddlewareStack) ApplyWithLicense(handler http.Handler) http.Handler {
+	handler = LicenseMiddleware(handler)
+	return ms.Apply(handler)
+}
+
+// ApplyPublic applies only basic middleware (no auth or license)
+func (ms *MiddlewareStack) ApplyPublic(handler http.Handler) http.Handler {
+	return ms.Apply(handler)
 }
 
 // ApplyToRouter applies middleware to a router

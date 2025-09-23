@@ -10,6 +10,13 @@ import (
 	"github.com/yakka-backend/internal/shared/response"
 )
 
+// ContextKey is a custom type for context keys to avoid collisions
+type ContextKey string
+
+const (
+	UserIDKey ContextKey = "user_id"
+)
+
 // JWTSecret should be loaded from environment variables in production
 var JWTSecret = []byte("your-secret-key-change-in-production")
 
@@ -22,12 +29,6 @@ type Claims struct {
 // AuthMiddleware validates JWT tokens
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Skip auth for health check and public auth endpoints
-		if isPublicEndpoint(r.URL.Path) {
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		// Get Authorization header
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -56,30 +57,9 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		}
 
 		// Add user ID to context
-		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
+		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-// isPublicEndpoint checks if the endpoint is public (doesn't require authentication)
-func isPublicEndpoint(path string) bool {
-	publicPaths := []string{
-		"/health",
-		"/api/v1/auth/register",
-		"/api/v1/auth/login",
-		"/api/v1/auth/refresh",
-		"/api/v1/auth/email/request-verification",
-		"/api/v1/auth/email/verify",
-		"/api/v1/auth/password/request-reset",
-		"/api/v1/auth/password/reset",
-	}
-
-	for _, publicPath := range publicPaths {
-		if path == publicPath {
-			return true
-		}
-	}
-	return false
 }
 
 // validateJWTToken validates and parses a JWT token
