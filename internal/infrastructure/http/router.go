@@ -85,14 +85,17 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCompleteHandler.GetSkillsComplete))).Methods("GET")
 
 	// Protected endpoints (require authentication)
+	api.HandleFunc("/profiles/labour", r.labourProfileHandler.CreateLabourProfile).Methods("POST")
+	api.HandleFunc("/profiles/builder", r.builderProfileHandler.CreateBuilderProfile).Methods("POST")
+
 	api.Handle("/auth/profile", middleware.AuthMiddleware(http.HandlerFunc(r.authHandler.GetProfile))).Methods("GET")
+
 	/*
 		no test
 			api.HandleFunc("/auth/profile", r.authHandler.UpdateProfile).Methods("PUT")
 			api.HandleFunc("/auth/password/change", r.authHandler.ChangePassword).Methods("POST")
 			api.HandleFunc("/auth/logout", r.sessionHandler.Logout).Methods("POST")
-			api.HandleFunc("/profiles/labour", r.labourProfileHandler.CreateLabourProfile).Methods("POST")
-			api.HandleFunc("/profiles/builder", r.builderProfileHandler.CreateBuilderProfile).Methods("POST") */
+	*/
 
 	// Apply middleware stack (includes auth middleware)
 	handler := middlewareStack.ApplyToRouter(router)

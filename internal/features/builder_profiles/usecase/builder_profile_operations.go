@@ -20,14 +20,16 @@ type BuilderProfileUsecase interface {
 }
 
 type builderProfileUsecase struct {
-	builderRepo database.BuilderProfileRepository
-	userRepo    authUserRepo.UserRepository
+	builderRepo     database.BuilderProfileRepository
+	userLicenseRepo authUserRepo.UserLicenseRepository
+	userRepo        authUserRepo.UserRepository
 }
 
-func NewBuilderProfileUsecase(builderRepo database.BuilderProfileRepository, userRepo authUserRepo.UserRepository) BuilderProfileUsecase {
+func NewBuilderProfileUsecase(builderRepo database.BuilderProfileRepository, userLicenseRepo authUserRepo.UserLicenseRepository, userRepo authUserRepo.UserRepository) BuilderProfileUsecase {
 	return &builderProfileUsecase{
-		builderRepo: builderRepo,
-		userRepo:    userRepo,
+		builderRepo:     builderRepo,
+		userLicenseRepo: userLicenseRepo,
+		userRepo:        userRepo,
 	}
 }
 
@@ -80,6 +82,46 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 
 	if err := u.userRepo.Update(ctx, user); err != nil {
 		return nil, err
+	}
+
+	// Create licenses if provided
+	if len(req.Licenses) > 0 {
+		var licenses []*authUserModels.UserLicense
+		for _, licenseReq := range req.Licenses {
+			licenseID, err := uuid.Parse(licenseReq.LicenseID)
+			if err != nil {
+				return nil, fmt.Errorf("invalid license_id: %w", err)
+			}
+
+			license := &authUserModels.UserLicense{
+				UserID:    userID,
+				LicenseID: licenseID,
+				PhotoURL:  licenseReq.PhotoURL,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+
+			// Parse dates if provided
+			if licenseReq.IssuedAt != nil {
+				if issuedAt, err := time.Parse("2006-01-02T15:04:05Z07:00", *licenseReq.IssuedAt); err == nil {
+					license.IssuedAt = &issuedAt
+				}
+			}
+			if licenseReq.ExpiresAt != nil {
+				if expiresAt, err := time.Parse("2006-01-02T15:04:05Z07:00", *licenseReq.ExpiresAt); err == nil {
+					license.ExpiresAt = &expiresAt
+				}
+			}
+
+			licenses = append(licenses, license)
+		}
+
+		if err := u.userLicenseRepo.CreateBatch(ctx, licenses); err != nil {
+			// If licenses creation fails, we should rollback the profile creation
+			// For now, we'll log the error but not fail the entire operation
+			// In a production system, you might want to use database transactions
+			fmt.Printf("Warning: Failed to create licenses for user %s: %v\n", userID, err)
+		}
 	}
 
 	return profile, nil

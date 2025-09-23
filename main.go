@@ -66,8 +66,10 @@ func main() {
 	authSessionUseCase := auth_session_usecase.NewSessionUsecase(authSessionRepo)
 	authPasswordUseCase := auth_password_usecase.NewPasswordResetUsecase(authPasswordRepo)
 	authEmailUseCase := auth_email_usecase.NewEmailVerificationUsecase(authEmailRepo, authUserRepo)
-	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, authUserRepo)
-	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, authUserRepo)
+	labourSkillRepo := labour_db.NewLabourProfileSkillRepository(database.DB)
+	userLicenseRepo := auth_user_db.NewUserLicenseRepository(database.DB)
+	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo)
+	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
