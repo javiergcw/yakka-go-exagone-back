@@ -16,6 +16,7 @@ import (
 
 type LabourProfileUsecase interface {
 	CreateProfile(ctx context.Context, userID uuid.UUID, req payload.CreateLabourProfileRequest) (*labourModels.LabourProfile, error)
+	GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*labourModels.LabourProfile, error)
 }
 
 type labourProfileUsecase struct {
@@ -81,5 +82,13 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 		return nil, err
 	}
 
+	return profile, nil
+}
+
+func (u *labourProfileUsecase) GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*labourModels.LabourProfile, error) {
+	profile, err := u.labourRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 	return profile, nil
 }

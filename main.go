@@ -15,11 +15,11 @@ import (
 	auth_user_usecase "github.com/yakka-backend/internal/features/auth/user/usecase"
 	auth_session_db "github.com/yakka-backend/internal/features/auth/user_session/entity/database"
 	auth_session_usecase "github.com/yakka-backend/internal/features/auth/user_session/usecase"
-	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
+	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_usecase "github.com/yakka-backend/internal/features/builder_profiles/usecase"
-	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
+	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"github.com/yakka-backend/internal/infrastructure/database"
@@ -70,7 +70,7 @@ func main() {
 	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, authUserRepo)
 
 	// Initialize handlers
-	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase)
+	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
 	sessionHandler := auth_rest.NewSessionHandler(authSessionUseCase)
 	passwordHandler := auth_rest.NewPasswordHandler(authPasswordUseCase)
 	emailHandler := auth_rest.NewEmailHandler(authEmailUseCase)
