@@ -21,6 +21,9 @@ import (
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
 	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
+	experience_db "github.com/yakka-backend/internal/features/masters/experience_levels/entity/database"
+	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
+	skill_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"github.com/yakka-backend/internal/infrastructure/database"
 	httpRouter "github.com/yakka-backend/internal/infrastructure/http"
@@ -68,8 +71,12 @@ func main() {
 	authEmailUseCase := auth_email_usecase.NewEmailVerificationUsecase(authEmailRepo, authUserRepo)
 	labourSkillRepo := labour_db.NewLabourProfileSkillRepository(database.DB)
 	userLicenseRepo := auth_user_db.NewUserLicenseRepository(database.DB)
-	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo)
-	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo)
+	licenseRepo := license_db.NewLicenseRepository(database.DB)
+	skillCategoryRepo := skill_db.NewSkillCategoryRepository(database.DB)
+	skillSubcategoryRepo := skill_db.NewSkillSubcategoryRepository(database.DB)
+	experienceRepo := experience_db.NewExperienceLevelRepository(database.DB)
+	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, experienceRepo)
+	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo, licenseRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)

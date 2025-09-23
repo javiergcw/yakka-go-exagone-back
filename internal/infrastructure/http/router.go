@@ -84,10 +84,9 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/skill-categories/{categoryId}/subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategoriesByCategory))).Methods("GET")
 	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCompleteHandler.GetSkillsComplete))).Methods("GET")
 
-	// Protected endpoints (require authentication)
-	api.HandleFunc("/profiles/labour", r.labourProfileHandler.CreateLabourProfile).Methods("POST")
-	api.HandleFunc("/profiles/builder", r.builderProfileHandler.CreateBuilderProfile).Methods("POST")
-
+	// Protected endpoints (require authentication only)
+	api.Handle("/profiles/labour", middleware.AuthMiddleware(http.HandlerFunc(r.labourProfileHandler.CreateLabourProfile))).Methods("POST")
+	api.Handle("/profiles/builder", middleware.AuthMiddleware(http.HandlerFunc(r.builderProfileHandler.CreateBuilderProfile))).Methods("POST")
 	api.Handle("/auth/profile", middleware.AuthMiddleware(http.HandlerFunc(r.authHandler.GetProfile))).Methods("GET")
 
 	/*
@@ -97,7 +96,7 @@ func (r *Router) SetupRoutes() http.Handler {
 			api.HandleFunc("/auth/logout", r.sessionHandler.Logout).Methods("POST")
 	*/
 
-	// Apply middleware stack (includes auth middleware)
+	// Apply middleware stack (basic middleware only)
 	handler := middlewareStack.ApplyToRouter(router)
 
 	log.Println("✅ Routes and middleware configured successfully")

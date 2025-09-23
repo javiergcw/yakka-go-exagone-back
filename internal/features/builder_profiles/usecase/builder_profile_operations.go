@@ -11,6 +11,8 @@ import (
 	"github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builderModels "github.com/yakka-backend/internal/features/builder_profiles/models"
 	"github.com/yakka-backend/internal/features/builder_profiles/payload"
+	licenseRepo "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
+	dbInfra "github.com/yakka-backend/internal/infrastructure/database"
 	"gorm.io/gorm"
 )
 
@@ -23,13 +25,15 @@ type builderProfileUsecase struct {
 	builderRepo     database.BuilderProfileRepository
 	userLicenseRepo authUserRepo.UserLicenseRepository
 	userRepo        authUserRepo.UserRepository
+	licenseRepo     licenseRepo.LicenseRepository
 }
 
-func NewBuilderProfileUsecase(builderRepo database.BuilderProfileRepository, userLicenseRepo authUserRepo.UserLicenseRepository, userRepo authUserRepo.UserRepository) BuilderProfileUsecase {
+func NewBuilderProfileUsecase(builderRepo database.BuilderProfileRepository, userLicenseRepo authUserRepo.UserLicenseRepository, userRepo authUserRepo.UserRepository, licenseRepo licenseRepo.LicenseRepository) BuilderProfileUsecase {
 	return &builderProfileUsecase{
 		builderRepo:     builderRepo,
 		userLicenseRepo: userLicenseRepo,
 		userRepo:        userRepo,
+		licenseRepo:     licenseRepo,
 	}
 }
 
@@ -49,6 +53,13 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 	if err == nil && existingProfile != nil {
 		// Profile already exists, return error
 		return nil, fmt.Errorf("builder profile already exists for this user")
+	}
+
+	// Validate licenses if provided (optimized batch validation)
+	if len(req.Licenses) > 0 {
+		if err := u.validateLicensesBatch(ctx, req.Licenses); err != nil {
+			return nil, err
+		}
 	}
 
 	// Create new profile
@@ -133,4 +144,47 @@ func (u *builderProfileUsecase) GetProfileByUserID(ctx context.Context, userID u
 		return nil, err
 	}
 	return profile, nil
+}
+
+// validateLicensesBatch validates all licenses in a single batch operation
+func (u *builderProfileUsecase) validateLicensesBatch(ctx context.Context, licenses []payload.UserLicenseRequest) error {
+	licenseIDs := make([]uuid.UUID, 0, len(licenses))
+
+	for _, license := range licenses {
+		licenseID, err := uuid.Parse(license.LicenseID)
+		if err != nil {
+			return fmt.Errorf("invalid license_id: %w", err)
+		}
+		licenseIDs = append(licenseIDs, licenseID)
+	}
+
+	// Validate licenses exist (single query)
+	if err := u.validateLicensesExist(ctx, licenseIDs); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateLicensesExist checks if all license IDs exist using batch query
+func (u *builderProfileUsecase) validateLicensesExist(ctx context.Context, licenseIDs []uuid.UUID) error {
+	if len(licenseIDs) == 0 {
+		return nil
+	}
+
+	// Use raw SQL for optimal performance
+	var count int64
+	err := dbInfra.DB.WithContext(ctx).
+		Raw("SELECT COUNT(*) FROM licenses WHERE id IN (?)", licenseIDs).
+		Scan(&count).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to validate licenses: %w", err)
+	}
+
+	if int(count) != len(licenseIDs) {
+		return fmt.Errorf("license not found")
+	}
+
+	return nil
 }

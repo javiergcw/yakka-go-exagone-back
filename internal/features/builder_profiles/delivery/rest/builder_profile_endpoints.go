@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/yakka-backend/internal/features/builder_profiles/payload"
 	"github.com/yakka-backend/internal/features/builder_profiles/usecase"
+	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 	"github.com/yakka-backend/internal/shared/validation"
 )
@@ -24,7 +25,7 @@ func NewBuilderProfileHandler(builderProfileUsecase usecase.BuilderProfileUsecas
 // CreateBuilderProfile creates or updates a builder profile
 func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from context (set by auth middleware)
-	userIDStr, ok := r.Context().Value("user_id").(string)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok {
 		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
 		return
@@ -56,6 +57,20 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 			response.WriteError(w, http.StatusConflict, "Builder profile already exists for this user")
 			return
 		}
+
+		// Check for validation errors (UUID not found)
+		if err.Error() == "license not found" {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Check for invalid UUID format
+		if err.Error() == "invalid license_id" {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Generic error for other cases
 		response.WriteError(w, http.StatusInternalServerError, "Failed to create builder profile")
 		return
 	}

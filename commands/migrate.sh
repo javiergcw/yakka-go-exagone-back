@@ -35,6 +35,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "Usage:"
     echo "  ./migrate.sh              - Run database migration only (no master data)"
     echo "  ./migrate.sh --with-seed  - Run database migration + populate master tables"
+    echo "  ./migrate.sh --optimize   - Run only database index optimization"
     echo "  ./migrate.sh --help       - Show this help message"
     echo ""
     echo "Master data includes:"
@@ -42,16 +43,30 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "  - Experience levels"
     echo "  - Skill categories"
     echo "  - Skill subcategories"
+    echo ""
+    echo "Index optimization includes:"
+    echo "  - Batch validation indexes for faster IN queries"
+    echo "  - Foreign key indexes for better joins"
+    echo "  - Composite indexes for complex queries"
     exit 0
 fi
 
-# Check for seed option
+# Check for options
 WITH_SEED=false
+OPTIMIZE_ONLY=false
+
 if [ "$1" = "--with-seed" ]; then
     WITH_SEED=true
+elif [ "$1" = "--optimize" ]; then
+    OPTIMIZE_ONLY=true
 fi
 
-print_status "🚀 Starting database migration..."
+# Handle optimize-only option
+if [ "$OPTIMIZE_ONLY" = true ]; then
+    print_status "🚀 Starting database index optimization..."
+else
+    print_status "🚀 Starting database migration..."
+fi
 
 # Check if environment file exists
 if [ ! -f ".env.dev" ] && [ ! -f ".env.prod" ]; then
@@ -94,17 +109,21 @@ echo "  Port: $DB_PORT"
 echo "  Database: $DB_NAME"
 echo "  User: $DB_USER"
 
-# Run migration
-print_status "Running database migration..."
-if go run main.go -migrate; then
-    print_success "✅ Database migration completed successfully!"
+# Run migration (skip if optimize-only)
+if [ "$OPTIMIZE_ONLY" = false ]; then
+    print_status "Running database migration..."
+    if go run main.go -migrate; then
+        print_success "✅ Database migration completed successfully!"
+    else
+        print_error "❌ Database migration failed!"
+        exit 1
+    fi
 else
-    print_error "❌ Database migration failed!"
-    exit 1
+    print_status "Skipping database migration (optimize-only mode)"
 fi
 
-# Check if user wants to seed master data
-if [ "$WITH_SEED" = true ]; then
+# Check if user wants to seed master data (skip if optimize-only)
+if [ "$WITH_SEED" = true ] && [ "$OPTIMIZE_ONLY" = false ]; then
     print_status "🌱 Seeding master data (licenses, experience levels, skill categories, and subcategories)..."
     
     # Seed licenses
@@ -148,4 +167,31 @@ else
     print_warning "⚠️  Skipping master data seeding. Use --with-seed to populate master tables."
     print_status "💡 To seed master data later, run: ./migrate.sh --with-seed"
     print_success "🎉 Database migration completed successfully!"
+fi
+
+# Optimize database indexes for better performance
+print_status "🚀 Optimizing database indexes for better performance..."
+
+# Check if optimize-indexes.sql exists
+if [ -f "commands/optimize-indexes.sql" ]; then
+    print_status "Applying database index optimizations..."
+    if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -f commands/optimize-indexes.sql; then
+        print_success "✅ Database index optimization completed successfully!"
+        print_status "📈 Performance improvements applied:"
+        echo "  - Batch validation indexes for faster IN queries"
+        echo "  - Foreign key indexes for better joins"
+        echo "  - Composite indexes for complex queries"
+        echo "  - Database statistics updated"
+    else
+        print_warning "⚠️  Database index optimization failed, but migration was successful."
+        print_status "💡 You can run index optimization manually later if needed."
+    fi
+else
+    print_warning "⚠️  optimize-indexes.sql not found, skipping index optimization."
+fi
+
+if [ "$OPTIMIZE_ONLY" = true ]; then
+    print_success "🎉 Database index optimization completed successfully!"
+else
+    print_success "🎉 Database migration and optimization completed successfully!"
 fi

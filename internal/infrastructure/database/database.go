@@ -35,11 +35,25 @@ func Connect(cfg *config.Config) error {
 
 	var err error
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
+		Logger: logger.Default.LogMode(logger.Warn), // Reduce logging for performance
+		// Performance optimizations
+		PrepareStmt:                              true, // Enable prepared statements
+		DisableForeignKeyConstraintWhenMigrating: true, // Faster migrations
 	})
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
+
+	// Configure connection pool for better performance
+	sqlDB, err := DB.DB()
+	if err != nil {
+		return fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
+
+	// Set connection pool settings
+	sqlDB.SetMaxIdleConns(10)   // Maximum number of idle connections
+	sqlDB.SetMaxOpenConns(100)  // Maximum number of open connections
+	sqlDB.SetConnMaxLifetime(0) // Connection lifetime (0 = unlimited)
 
 	log.Println("✅ Database connected successfully")
 	return nil
@@ -70,6 +84,10 @@ func Migrate() error {
 		// Profile models
 		&builderProfileModels.BuilderProfile{},
 		&labourProfileModels.LabourProfile{},
+		&labourProfileModels.LabourProfileSkill{},
+
+		// User license models
+		&authUserModels.UserLicense{},
 
 		// License models
 		&licenseModels.License{},

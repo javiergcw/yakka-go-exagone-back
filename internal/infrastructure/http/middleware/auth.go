@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -52,9 +53,12 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		// Parse and validate JWT token
 		claims, err := validateJWTToken(tokenString)
 		if err != nil {
+			log.Printf("🔐 JWT validation failed: %v", err)
 			response.WriteError(w, http.StatusUnauthorized, "Invalid token")
 			return
 		}
+
+		log.Printf("🔐 JWT validated successfully for user: %s", claims.UserID)
 
 		// Add user ID to context
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)

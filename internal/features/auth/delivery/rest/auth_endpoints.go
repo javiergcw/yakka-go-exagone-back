@@ -182,9 +182,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Generate JWT access token
 	accessToken, err := middleware.GenerateJWTToken(user.ID.String())
 	if err != nil {
+		log.Printf("❌ Failed to generate JWT token: %v", err)
 		response.WriteError(w, http.StatusInternalServerError, "Failed to generate token")
 		return
 	}
+
+	log.Printf("✅ JWT token generated successfully for user: %s", user.ID.String())
 
 	// Get user profile information
 	profileInfo, err := h.authUsecase.GetUserProfileInfo(r.Context(), user.ID)
