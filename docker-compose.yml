@@ -1,21 +1,46 @@
+# Yakka Backend Docker Compose Configuration
+# This file defines the backend service for the Yakka application
+
 services:
   yakka-backend:
+    # Build configuration
     build: .
     container_name: yakka-backend
+    
+    # Port mapping (external:internal)
     ports:
       - "8081:8080"
+    
+    # Environment variables
     env_file:
       - .env.dev
+    environment:
+      - DB_HOST=46.250.240.33
+      - DB_PORT=5548
+      - DB_USER=postgres
+      - DB_PASSWORD=C0mpl3xSup3rP@ss!20392
+      - DB_NAME=yakkadev
+      - DB_SSLMODE=disable
+      - PORT=8080
+      - ENVIRONMENT=development
+      - LOG_LEVEL=warn
+    
+    # Restart policy
     restart: unless-stopped
+    
+    # Health check configuration
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    
+    # Network configuration
     networks:
       - yakka-network
 
+# Network definitions
 networks:
   yakka-network:
     driver: bridge
