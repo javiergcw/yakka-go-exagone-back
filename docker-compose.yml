@@ -39,7 +39,7 @@ services:
       start_period: 40s
     
     # Network configuration
-    network_mode: host
+    # network_mode: host
 
 # Network definitions
 networks:
