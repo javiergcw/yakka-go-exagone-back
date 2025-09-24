@@ -23,7 +23,7 @@ services:
       - DB_PASSWORD=C0mpl3xSup3rP@ss!20392
       - DB_NAME=yakkadev
       - DB_SSLMODE=disable
-      - PORT=8081
+      - PORT=8080
       - ENVIRONMENT=development
       - LOG_LEVEL=warn
     

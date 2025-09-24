@@ -118,5 +118,15 @@ func main() {
 	fmt.Printf("👥 Users API: http://localhost:%s/api/v1/users\n", cfg.Server.Port)
 	fmt.Printf("🗄️  Database: %s:%d/%s\n", cfg.Database.Host, cfg.Database.Port, cfg.Database.Name)
 
-	log.Fatal(http.ListenAndServe(":"+cfg.Server.Port, httpRouter))
+	// NEW: usa PORT y escucha en 0.0.0.0
+	port := cfg.Server.Port
+	if port == "" {
+		port = "8080"
+	}
+	srv := &http.Server{
+		Addr:    "0.0.0.0:" + port,
+		Handler: httpRouter,
+	}
+
+	log.Fatal(srv.ListenAndServe())
 }
