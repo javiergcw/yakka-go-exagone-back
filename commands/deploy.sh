@@ -37,6 +37,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "  ./deploy.sh --run-only          - Run existing Docker image"
     echo "  ./deploy.sh --stop              - Stop running containers"
     echo "  ./deploy.sh --clean             - Clean up Docker resources"
+    echo "  ./deploy.sh --rebuild           - Force rebuild and recreate containers"
     echo "  ./deploy.sh --help              - Show this help message"
     echo ""
     echo "This script will:"
@@ -117,6 +118,27 @@ case "$1" in
         docker image prune -f
         print_success "✅ Docker resources cleaned up!"
         ;;
+    "--rebuild")
+        print_status "🔄 Force rebuilding and recreating containers..."
+        print_status "Stopping existing containers..."
+        docker-compose down
+        
+        print_status "Building Docker image..."
+        if docker build -t yakka-backend .; then
+            print_success "✅ Docker image built successfully!"
+        else
+            print_error "❌ Docker build failed!"
+            exit 1
+        fi
+        
+        print_status "Starting Docker container with new image..."
+        if docker-compose up -d --force-recreate; then
+            print_success "✅ Container started successfully with new image!"
+        else
+            print_error "❌ Failed to start container!"
+            exit 1
+        fi
+        ;;
     *)
         # Default: build and deploy
         print_status "Building Docker image..."
@@ -128,7 +150,7 @@ case "$1" in
         fi
 
         print_status "Starting Docker container..."
-        if docker-compose up -d; then
+        if docker-compose up -d --force-recreate; then
             print_success "✅ Container started successfully!"
         else
             print_error "❌ Failed to start container!"
