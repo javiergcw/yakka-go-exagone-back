@@ -17,13 +17,13 @@ services:
     
     # Database environment variables
     environment:
+      - PORT=8080
       - DB_HOST=46.250.240.33
       - DB_PORT=5548
       - DB_USER=postgres
       - DB_PASSWORD=C0mpl3xSup3rP@ss!20392
       - DB_NAME=yakkadev
       - DB_SSLMODE=disable
-      - PORT=8080
       - ENVIRONMENT=development
       - LOG_LEVEL=warn
     
@@ -37,9 +37,3 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
-    
-
-# Network definitions
-networks:
-  yakka-network:
-    driver: bridge
