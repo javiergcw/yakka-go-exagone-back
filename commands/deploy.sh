@@ -86,7 +86,7 @@ print_status "🚀 Starting Yakka Backend deployment..."
 case "$1" in
     "--build-only")
         print_status "Building Docker image..."
-        if docker build -t yakka-backend .; then
+        if docker build -t yakka-backend:latest .; then
             print_success "✅ Docker image built successfully!"
         else
             print_error "❌ Docker build failed!"
@@ -124,7 +124,7 @@ case "$1" in
         docker-compose down
         
         print_status "Building Docker image..."
-        if docker build -t yakka-backend .; then
+        if docker build -t yakka-backend:latest .; then
             print_success "✅ Docker image built successfully!"
         else
             print_error "❌ Docker build failed!"
@@ -142,7 +142,7 @@ case "$1" in
     *)
         # Default: build and deploy
         print_status "Building Docker image..."
-        if docker build -t yakka-backend .; then
+        if docker build -t yakka-backend:latest .; then
             print_success "✅ Docker image built successfully!"
         else
             print_error "❌ Docker build failed!"
