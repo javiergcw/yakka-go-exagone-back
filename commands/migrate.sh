@@ -43,6 +43,9 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "  - Experience levels"
     echo "  - Skill categories"
     echo "  - Skill subcategories"
+    echo "  - Job requirements"
+    echo "  - Job types"
+    echo "  - Payment constants"
     echo ""
     echo "Index optimization includes:"
     echo "  - Batch validation indexes for faster IN queries"
@@ -124,7 +127,7 @@ fi
 
 # Check if user wants to seed master data (skip if optimize-only)
 if [ "$WITH_SEED" = true ] && [ "$OPTIMIZE_ONLY" = false ]; then
-    print_status "🌱 Seeding master data (licenses, experience levels, skill categories, and subcategories)..."
+    print_status "🌱 Seeding master data (licenses, experience levels, skill categories, subcategories, job requirements, job types, and payment constants)..."
     
     # Seed licenses
     print_status "Seeding licenses..."
@@ -159,6 +162,33 @@ if [ "$WITH_SEED" = true ] && [ "$OPTIMIZE_ONLY" = false ]; then
         print_success "✅ Skill subcategory seeding completed successfully!"
     else
         print_error "❌ Skill subcategory seeding failed!"
+        exit 1
+    fi
+
+    # Seed job requirements
+    print_status "Seeding job requirements..."
+    if go run commands/seed/job_requirements/seed-job-requirements.go; then
+        print_success "✅ Job requirement seeding completed successfully!"
+    else
+        print_error "❌ Job requirement seeding failed!"
+        exit 1
+    fi
+
+    # Seed job types
+    print_status "Seeding job types..."
+    if go run commands/seed/job_types/seed-job-types.go; then
+        print_success "✅ Job type seeding completed successfully!"
+    else
+        print_error "❌ Job type seeding failed!"
+        exit 1
+    fi
+
+    # Seed payment constants
+    print_status "Seeding payment constants..."
+    if go run commands/seed/payment_constants/seed-payment-constants.go; then
+        print_success "✅ Payment constant seeding completed successfully!"
+    else
+        print_error "❌ Payment constant seeding failed!"
         exit 1
     fi
     

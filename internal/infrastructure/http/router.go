@@ -11,7 +11,13 @@ import (
 	jobsite_rest "github.com/yakka-backend/internal/features/jobsites/delivery/rest"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
 	experience_level_rest "github.com/yakka-backend/internal/features/masters/experience_levels/delivery/rest"
+	job_requirement_rest "github.com/yakka-backend/internal/features/masters/job_requirements/delivery/rest"
+	job_requirement_db "github.com/yakka-backend/internal/features/masters/job_requirements/entity/database"
+	job_type_rest "github.com/yakka-backend/internal/features/masters/job_types/delivery/rest"
+	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	license_rest "github.com/yakka-backend/internal/features/masters/licenses/delivery/rest"
+	payment_constant_rest "github.com/yakka-backend/internal/features/masters/payment_constants/delivery/rest"
+	"github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_category_rest "github.com/yakka-backend/internal/features/masters/skills/delivery/rest"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
@@ -31,6 +37,9 @@ type Router struct {
 	skillCategoryHandler    *skill_category_rest.SkillCategoryHandler
 	skillSubcategoryHandler *skill_category_rest.SkillSubcategoryHandler
 	skillCompleteHandler    *skill_category_rest.SkillCompleteHandler
+	jobRequirementHandler   *job_requirement_rest.JobRequirementHandler
+	jobTypeHandler          *job_type_rest.JobTypeHandler
+	paymentConstantHandler  *payment_constant_rest.PaymentConstantHandler
 }
 
 // NewRouter creates a new router
@@ -42,6 +51,9 @@ func NewRouter(
 	labourProfileHandler *labour_rest.LabourProfileHandler,
 	builderProfileHandler *builder_rest.BuilderProfileHandler,
 	jobsiteHandler *jobsite_rest.JobsiteHandler,
+	paymentConstantUseCase usecase.PaymentConstantUsecase,
+	jobRequirementRepo job_requirement_db.JobRequirementRepository,
+	jobTypeRepo job_type_db.JobTypeRepository,
 ) *Router {
 	return &Router{
 		authHandler:             authHandler,
@@ -56,6 +68,9 @@ func NewRouter(
 		skillCategoryHandler:    skill_category_rest.NewSkillCategoryHandler(),
 		skillSubcategoryHandler: skill_category_rest.NewSkillSubcategoryHandler(),
 		skillCompleteHandler:    skill_category_rest.NewSkillCompleteHandler(),
+		jobRequirementHandler:   job_requirement_rest.NewJobRequirementHandler(jobRequirementRepo),
+		jobTypeHandler:          job_type_rest.NewJobTypeHandler(jobTypeRepo),
+		paymentConstantHandler:  payment_constant_rest.NewPaymentConstantHandler(paymentConstantUseCase),
 	}
 }
 
@@ -87,6 +102,10 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/skill-subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategories))).Methods("GET")
 	api.Handle("/skill-categories/{categoryId}/subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategoriesByCategory))).Methods("GET")
 	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCompleteHandler.GetSkillsComplete))).Methods("GET")
+	// TODO: Descomentar cuando el paymentConstantHandler esté configurado correctamente
+	api.Handle("/payment-constants", middleware.LicenseMiddleware(http.HandlerFunc(r.paymentConstantHandler.GetAllPaymentConstants))).Methods("GET")
+	api.Handle("/job-requirements", middleware.LicenseMiddleware(http.HandlerFunc(r.jobRequirementHandler.GetJobRequirements))).Methods("GET")
+	api.Handle("/job-types", middleware.LicenseMiddleware(http.HandlerFunc(r.jobTypeHandler.GetJobTypes))).Methods("GET")
 
 	// Protected endpoints (require authentication only)
 	api.Handle("/profiles/labour", middleware.AuthMiddleware(http.HandlerFunc(r.labourProfileHandler.CreateLabourProfile))).Methods("POST")

@@ -12,7 +12,10 @@ import (
 	jobsiteModels "github.com/yakka-backend/internal/features/jobsites/models"
 	labourProfileModels "github.com/yakka-backend/internal/features/labour_profiles/models"
 	experienceLevelModels "github.com/yakka-backend/internal/features/masters/experience_levels/models"
+	jobRequirementModels "github.com/yakka-backend/internal/features/masters/job_requirements/models"
+	jobTypeModels "github.com/yakka-backend/internal/features/masters/job_types/models"
 	licenseModels "github.com/yakka-backend/internal/features/masters/licenses/models"
+	paymentConstantModels "github.com/yakka-backend/internal/features/masters/payment_constants/models"
 	skillModels "github.com/yakka-backend/internal/features/masters/skills/models"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"gorm.io/driver/postgres"
@@ -104,6 +107,15 @@ func Migrate() error {
 
 		// Experience level models
 		&experienceLevelModels.ExperienceLevel{},
+
+		// Job requirement models
+		&jobRequirementModels.JobRequirement{},
+
+		// Job type models
+		&jobTypeModels.JobType{},
+
+		// Payment constant models
+		&paymentConstantModels.PaymentConstant{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

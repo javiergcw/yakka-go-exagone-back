@@ -25,7 +25,11 @@ import (
 	labour_db "github.com/yakka-backend/internal/features/labour_profiles/entity/database"
 	labour_usecase "github.com/yakka-backend/internal/features/labour_profiles/usecase"
 	experience_db "github.com/yakka-backend/internal/features/masters/experience_levels/entity/database"
+	job_requirement_db "github.com/yakka-backend/internal/features/masters/job_requirements/entity/database"
+	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
+	payment_constant_db "github.com/yakka-backend/internal/features/masters/payment_constants/entity/database"
+	payment_constant_usecase "github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"github.com/yakka-backend/internal/infrastructure/database"
@@ -79,9 +83,13 @@ func main() {
 	skillCategoryRepo := skill_db.NewSkillCategoryRepository(database.DB)
 	skillSubcategoryRepo := skill_db.NewSkillSubcategoryRepository(database.DB)
 	experienceRepo := experience_db.NewExperienceLevelRepository(database.DB)
+	jobRequirementRepo := job_requirement_db.NewJobRequirementRepository(database.DB)
+	jobTypeRepo := job_type_db.NewJobTypeRepository(database.DB)
+	paymentConstantRepo := payment_constant_db.NewPaymentConstantRepository(database.DB)
 	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, experienceRepo)
 	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo, licenseRepo)
 	jobsiteUseCase := jobsite_usecase.NewJobsiteUsecaseImpl(jobsiteRepo)
+	paymentConstantUseCase := payment_constant_usecase.NewPaymentConstantUsecase(paymentConstantRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
@@ -93,7 +101,7 @@ func main() {
 	jobsiteHandler := jobsite_rest.NewJobsiteHandler(jobsiteUseCase)
 
 	// Initialize router
-	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler)
+	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler, paymentConstantUseCase, jobRequirementRepo, jobTypeRepo)
 	httpRouter := router.SetupRoutes()
 
 	// Start server
