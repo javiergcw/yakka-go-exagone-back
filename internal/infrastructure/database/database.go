@@ -9,6 +9,7 @@ import (
 	authUserModels "github.com/yakka-backend/internal/features/auth/user/models"
 	userSessionModels "github.com/yakka-backend/internal/features/auth/user_session/models"
 	builderProfileModels "github.com/yakka-backend/internal/features/builder_profiles/models"
+	jobModels "github.com/yakka-backend/internal/features/jobs/models"
 	jobsiteModels "github.com/yakka-backend/internal/features/jobsites/models"
 	labourProfileModels "github.com/yakka-backend/internal/features/labour_profiles/models"
 	experienceLevelModels "github.com/yakka-backend/internal/features/masters/experience_levels/models"
@@ -116,6 +117,11 @@ func Migrate() error {
 
 		// Payment constant models
 		&paymentConstantModels.PaymentConstant{},
+
+		// Job models
+		&jobModels.Job{},
+		&jobModels.JobLicense{},
+		&jobModels.JobSkill{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

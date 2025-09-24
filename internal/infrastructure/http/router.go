@@ -8,6 +8,9 @@ import (
 	"github.com/gorilla/mux"
 	auth_rest "github.com/yakka-backend/internal/features/auth/delivery/rest"
 	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
+	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
+	job_rest "github.com/yakka-backend/internal/features/jobs/delivery/rest"
+	job_usecase "github.com/yakka-backend/internal/features/jobs/usecase"
 	jobsite_rest "github.com/yakka-backend/internal/features/jobsites/delivery/rest"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
 	experience_level_rest "github.com/yakka-backend/internal/features/masters/experience_levels/delivery/rest"
@@ -17,7 +20,7 @@ import (
 	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	license_rest "github.com/yakka-backend/internal/features/masters/licenses/delivery/rest"
 	payment_constant_rest "github.com/yakka-backend/internal/features/masters/payment_constants/delivery/rest"
-	"github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
+	payment_constant_usecase "github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_category_rest "github.com/yakka-backend/internal/features/masters/skills/delivery/rest"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
@@ -32,6 +35,7 @@ type Router struct {
 	labourProfileHandler    *labour_rest.LabourProfileHandler
 	builderProfileHandler   *builder_rest.BuilderProfileHandler
 	jobsiteHandler          *jobsite_rest.JobsiteHandler
+	jobHandler              *job_rest.JobHandler
 	licenseHandler          *license_rest.LicenseHandler
 	experienceLevelHandler  *experience_level_rest.ExperienceLevelHandler
 	skillCategoryHandler    *skill_category_rest.SkillCategoryHandler
@@ -51,7 +55,9 @@ func NewRouter(
 	labourProfileHandler *labour_rest.LabourProfileHandler,
 	builderProfileHandler *builder_rest.BuilderProfileHandler,
 	jobsiteHandler *jobsite_rest.JobsiteHandler,
-	paymentConstantUseCase usecase.PaymentConstantUsecase,
+	jobUsecase job_usecase.JobUsecase,
+	builderProfileRepo builder_db.BuilderProfileRepository,
+	paymentConstantUseCase payment_constant_usecase.PaymentConstantUsecase,
 	jobRequirementRepo job_requirement_db.JobRequirementRepository,
 	jobTypeRepo job_type_db.JobTypeRepository,
 ) *Router {
@@ -63,6 +69,7 @@ func NewRouter(
 		labourProfileHandler:    labourProfileHandler,
 		builderProfileHandler:   builderProfileHandler,
 		jobsiteHandler:          jobsiteHandler,
+		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo),
 		licenseHandler:          license_rest.NewLicenseHandler(),
 		experienceLevelHandler:  experience_level_rest.NewExperienceLevelHandler(),
 		skillCategoryHandler:    skill_category_rest.NewSkillCategoryHandler(),
@@ -88,12 +95,6 @@ func (r *Router) SetupRoutes() http.Handler {
 	// Public auth endpoints (no middleware)
 	api.HandleFunc("/auth/register", r.authHandler.Register).Methods("POST")
 	api.HandleFunc("/auth/login", r.authHandler.Login).Methods("POST")
-	/*
-		no test
-		api.HandleFunc("/auth/refresh", r.sessionHandler.RefreshToken).Methods("POST")
-		   	api.HandleFunc("/auth/password/reset", r.passwordHandler.RequestPasswordReset).Methods("POST")
-		   	api.HandleFunc("/auth/password/reset/confirm", r.passwordHandler.ResetPassword).Methods("POST")
-		   	api.HandleFunc("/auth/email/verify", r.emailHandler.VerifyEmail).Methods("POST") */
 
 	// Master tables endpoints (require license)
 	api.Handle("/licenses", middleware.LicenseMiddleware(http.HandlerFunc(r.licenseHandler.GetLicenses))).Methods("GET")
@@ -119,6 +120,9 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/jobsites/{id}", middleware.BuilderMiddleware(http.HandlerFunc(r.jobsiteHandler.UpdateJobsite))).Methods("PUT")
 	api.Handle("/jobsites/{id}", middleware.BuilderMiddleware(http.HandlerFunc(r.jobsiteHandler.DeleteJobsite))).Methods("DELETE")
 
+	// Job endpoints (require builder role)
+	api.Handle("/jobs", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.CreateJob))).Methods("POST")
+
 	//labour endpoints
 
 	/*
@@ -126,6 +130,11 @@ func (r *Router) SetupRoutes() http.Handler {
 			api.HandleFunc("/auth/profile", r.authHandler.UpdateProfile).Methods("PUT")
 			api.HandleFunc("/auth/password/change", r.authHandler.ChangePassword).Methods("POST")
 			api.HandleFunc("/auth/logout", r.sessionHandler.Logout).Methods("POST")
+
+			api.HandleFunc("/auth/refresh", r.sessionHandler.RefreshToken).Methods("POST")
+		   	api.HandleFunc("/auth/password/reset", r.passwordHandler.RequestPasswordReset).Methods("POST")
+		   	api.HandleFunc("/auth/password/reset/confirm", r.passwordHandler.ResetPassword).Methods("POST")
+		   	api.HandleFunc("/auth/email/verify", r.emailHandler.VerifyEmail).Methods("POST")
 	*/
 
 	// Apply middleware stack (basic middleware only)
