@@ -4,13 +4,14 @@ services:
     image: yakka-backend:latest
     container_name: yakka-backend
 
-    ports:
-      - "8081:8080"                   # NEW
+    # ports:
+    #   - "8081:8080"                   # NEW
+    network_mode: host
 
     env_file:
       - .env.dev
     environment:
-      - PORT=8080                     # NEW (antes 8081)
+      - PORT=8081                     # NEW (usar 8081 con host network)
       - DB_HOST=46.250.240.33
       - DB_PORT=5548
       - DB_USER=postgres
@@ -23,7 +24,7 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]  # NEW puerto correcto
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/health"]  # NEW puerto correcto
       interval: 30s
       timeout: 10s
       retries: 3
