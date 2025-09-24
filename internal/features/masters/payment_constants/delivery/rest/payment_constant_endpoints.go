@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/yakka-backend/internal/features/masters/payment_constants/models"
 	"github.com/yakka-backend/internal/features/masters/payment_constants/payload"
 	"github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	"github.com/yakka-backend/internal/shared/response"
@@ -149,12 +150,49 @@ func (h *PaymentConstantHandler) GetPaymentConstantByName(w http.ResponseWriter,
 
 // GetAllPaymentConstants retrieves all payment constants
 func (h *PaymentConstantHandler) GetAllPaymentConstants(w http.ResponseWriter, r *http.Request) {
-	// Simple implementation like licenses
-	response.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    []interface{}{},
-		"message": "Payment constants retrieved successfully",
-	})
+	// Check if usecase is configured
+	if h.paymentConstantUsecase == nil {
+		response.WriteError(w, http.StatusServiceUnavailable, "Payment constants service is not configured")
+		return
+	}
+
+	// Check if only active constants are requested
+	activeOnly := r.URL.Query().Get("active_only")
+
+	var constants []*models.PaymentConstant
+	var err error
+
+	if activeOnly == "true" {
+		constants, err = h.paymentConstantUsecase.GetActiveConstants(r.Context())
+	} else {
+		constants, err = h.paymentConstantUsecase.GetAllConstants(r.Context())
+	}
+
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get payment constants")
+		return
+	}
+
+	// Convert to response
+	var constantsResp []payload.PaymentConstantResponse
+	for _, constant := range constants {
+		constantsResp = append(constantsResp, payload.PaymentConstantResponse{
+			ID:          constant.ID.String(),
+			Name:        constant.Name,
+			Value:       constant.Value,
+			Description: constant.Description,
+			IsActive:    constant.IsActive,
+			CreatedAt:   constant.CreatedAt,
+			UpdatedAt:   constant.UpdatedAt,
+		})
+	}
+
+	resp := payload.GetPaymentConstantsResponse{
+		Constants: constantsResp,
+		Message:   "Payment constants retrieved successfully",
+	}
+
+	response.WriteJSON(w, http.StatusOK, resp)
 }
 
 // UpdatePaymentConstant updates a payment constant

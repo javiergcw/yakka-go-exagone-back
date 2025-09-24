@@ -103,7 +103,6 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/skill-subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategories))).Methods("GET")
 	api.Handle("/skill-categories/{categoryId}/subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategoriesByCategory))).Methods("GET")
 	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCompleteHandler.GetSkillsComplete))).Methods("GET")
-	// TODO: Descomentar cuando el paymentConstantHandler esté configurado correctamente
 	api.Handle("/payment-constants", middleware.LicenseMiddleware(http.HandlerFunc(r.paymentConstantHandler.GetAllPaymentConstants))).Methods("GET")
 	api.Handle("/job-requirements", middleware.LicenseMiddleware(http.HandlerFunc(r.jobRequirementHandler.GetJobRequirements))).Methods("GET")
 	api.Handle("/job-types", middleware.LicenseMiddleware(http.HandlerFunc(r.jobTypeHandler.GetJobTypes))).Methods("GET")
@@ -149,7 +148,7 @@ func (r *Router) healthCheck(w http.ResponseWriter, req *http.Request) {
 	healthResp := response.HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
-		Version:   "1.0.0",
+		Version:   "1.1.0",
 		Data: map[string]interface{}{
 			"uptime":  "running",
 			"license": "YAKKA-PROD-2024-8F9E2A1B-3C4D5E6F-7A8B9C0D-1E2F3A4B", // License for master tables endpoints

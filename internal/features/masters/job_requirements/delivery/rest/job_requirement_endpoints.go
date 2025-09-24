@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/yakka-backend/internal/features/masters/job_requirements/entity/database"
+	"github.com/yakka-backend/internal/features/masters/job_requirements/models"
 	"github.com/yakka-backend/internal/shared/response"
 )
 
@@ -20,12 +21,42 @@ func NewJobRequirementHandler(jobRequirementRepo database.JobRequirementReposito
 
 // GetJobRequirements retrieves all job requirements
 func (h *JobRequirementHandler) GetJobRequirements(w http.ResponseWriter, r *http.Request) {
-	// Simple implementation like licenses
-	response.WriteJSON(w, http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    []interface{}{},
-		"message": "Job requirements retrieved successfully",
-	})
+	// Check if only active requirements are requested
+	activeOnly := r.URL.Query().Get("active_only")
+
+	var requirements []*models.JobRequirement
+	var err error
+
+	if activeOnly == "true" {
+		requirements, err = h.jobRequirementRepo.GetActive(r.Context())
+	} else {
+		requirements, err = h.jobRequirementRepo.GetAll(r.Context())
+	}
+
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get job requirements")
+		return
+	}
+
+	// Convert to response
+	var requirementsResp []JobRequirementResponse
+	for _, requirement := range requirements {
+		requirementsResp = append(requirementsResp, JobRequirementResponse{
+			ID:          requirement.ID.String(),
+			Name:        requirement.Name,
+			Description: requirement.Description,
+			IsActive:    requirement.IsActive,
+			CreatedAt:   requirement.CreatedAt,
+			UpdatedAt:   requirement.UpdatedAt,
+		})
+	}
+
+	resp := GetJobRequirementsResponse{
+		Requirements: requirementsResp,
+		Message:      "Job requirements retrieved successfully",
+	}
+
+	response.WriteJSON(w, http.StatusOK, resp)
 }
 
 // JobRequirementResponse represents a job requirement in responses
