@@ -31,7 +31,7 @@ const (
 // Application info
 const (
 	AppName    = "yakka-backend"
-	AppVersion = "1.0.0"
+	AppVersion = "1.2.0"
 )
 
 // Database table names
