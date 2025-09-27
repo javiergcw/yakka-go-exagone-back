@@ -65,7 +65,7 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 	// Create new profile
 	profile := &builderModels.BuilderProfile{
 		UserID:      userID,
-		CompanyName: &req.CompanyName,
+		CompanyName: req.CompanyName,
 		DisplayName: &req.DisplayName,
 		Location:    &req.Location,
 		Bio:         req.Bio,
@@ -91,7 +91,19 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 		user.Phone = req.Phone
 	}
 
-	if err := u.userRepo.Update(ctx, user); err != nil {
+	// Use Updates instead of Save to avoid overwriting existing fields
+	updates := map[string]interface{}{
+		"role":            user.Role,
+		"role_changed_at": user.RoleChangedAt,
+		"photo":           user.Photo,
+	}
+
+	// Only update phone if provided
+	if req.Phone != nil {
+		updates["phone"] = user.Phone
+	}
+
+	if err := u.userRepo.UpdateSpecificFields(ctx, user.ID, updates); err != nil {
 		return nil, err
 	}
 

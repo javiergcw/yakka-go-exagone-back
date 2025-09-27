@@ -4,7 +4,7 @@ package payload
 type CreateJobsiteRequest struct {
 	BuilderID   string  `json:"builder_id" validate:"required,uuid"`
 	Address     string  `json:"address" validate:"required,min=10,max=500"`
-	City        string  `json:"city" validate:"required,min=2,max=120"`
+	City        *string `json:"city,omitempty" validate:"omitempty,min=2,max=120"`
 	Suburb      *string `json:"suburb,omitempty" validate:"omitempty,min=2,max=120"`
 	Description *string `json:"description,omitempty" validate:"omitempty,max=1000"`
 	Latitude    float64 `json:"latitude" validate:"required,min=-90,max=90"`

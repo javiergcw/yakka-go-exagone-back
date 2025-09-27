@@ -11,7 +11,7 @@ type JobsiteResponse struct {
 	ID          uuid.UUID `json:"id"`
 	BuilderID   uuid.UUID `json:"builder_id"`
 	Address     string    `json:"address"`
-	City        string    `json:"city"`
+	City        *string   `json:"city,omitempty"`
 	Suburb      *string   `json:"suburb,omitempty"`
 	Description *string   `json:"description,omitempty"`
 	Latitude    float64   `json:"latitude"`

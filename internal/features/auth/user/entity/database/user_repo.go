@@ -14,6 +14,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	GetByEmail(ctx context.Context, email string) (*models.User, error)
 	Update(ctx context.Context, user *models.User) error
+	UpdateSpecificFields(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error
 	Delete(ctx context.Context, id uuid.UUID) error
 	UpdateLastLogin(ctx context.Context, id uuid.UUID) error
 	UpdateRole(ctx context.Context, id uuid.UUID, role models.UserRole) error
@@ -58,6 +59,11 @@ func (r *userRepository) GetByEmail(ctx context.Context, email string) (*models.
 // Update updates a user
 func (r *userRepository) Update(ctx context.Context, user *models.User) error {
 	return r.db.WithContext(ctx).Save(user).Error
+}
+
+// UpdateSpecificFields updates only specific fields of a user
+func (r *userRepository) UpdateSpecificFields(ctx context.Context, id uuid.UUID, updates map[string]interface{}) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", id).Updates(updates).Error
 }
 
 // Delete deletes a user

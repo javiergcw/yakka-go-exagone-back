@@ -11,7 +11,7 @@ type Jobsite struct {
 	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	BuilderID   uuid.UUID `json:"builder_id" gorm:"type:uuid;not null;index"`
 	Address     string    `json:"address" gorm:"type:text;not null"`
-	City        string    `json:"city" gorm:"type:varchar(120);not null;index"`
+	City        *string   `json:"city" gorm:"type:varchar(120);index"`
 	Suburb      *string   `json:"suburb" gorm:"type:varchar(120)"`
 	Description *string   `json:"description" gorm:"type:text"`
 	Latitude    float64   `json:"latitude" gorm:"type:decimal(10,8);not null"`

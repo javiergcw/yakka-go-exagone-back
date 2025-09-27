@@ -99,8 +99,6 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 	*user.RoleChangedAt = time.Now()
 
 	// Update user fields that are now in the user table
-	user.FirstName = &req.FirstName
-	user.LastName = &req.LastName
 	user.Photo = req.AvatarURL
 
 	// Update user phone if provided
@@ -108,7 +106,21 @@ func (u *labourProfileUsecase) CreateProfile(ctx context.Context, userID uuid.UU
 		user.Phone = req.Phone
 	}
 
-	if err := u.userRepo.Update(ctx, user); err != nil {
+	// Use Updates instead of Save to avoid overwriting existing fields
+	updates := map[string]interface{}{
+		"role":            user.Role,
+		"role_changed_at": user.RoleChangedAt,
+		"photo":           user.Photo,
+		"first_name":      req.FirstName,
+		"last_name":       req.LastName,
+	}
+
+	// Only update phone if provided
+	if req.Phone != nil {
+		updates["phone"] = user.Phone
+	}
+
+	if err := u.userRepo.UpdateSpecificFields(ctx, user.ID, updates); err != nil {
 		return nil, err
 	}
 

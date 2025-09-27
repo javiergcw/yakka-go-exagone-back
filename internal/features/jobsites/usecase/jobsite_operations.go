@@ -116,7 +116,7 @@ func (u *JobsiteUsecaseImpl) UpdateJobsite(ctx context.Context, id uuid.UUID, re
 		jobsite.Address = *req.Address
 	}
 	if req.City != nil {
-		jobsite.City = *req.City
+		jobsite.City = req.City
 	}
 	if req.Suburb != nil {
 		jobsite.Suburb = req.Suburb
