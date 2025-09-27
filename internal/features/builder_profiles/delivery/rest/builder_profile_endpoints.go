@@ -79,9 +79,9 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 	profileResp := payload.BuilderProfileResponse{
 		ID:          profile.ID.String(),
 		UserID:      profile.UserID.String(),
-		CompanyName: *profile.CompanyName,
-		DisplayName: *profile.DisplayName,
-		Location:    *profile.Location,
+		CompanyName: getStringValue(profile.CompanyName),
+		DisplayName: getStringValue(profile.DisplayName),
+		Location:    getStringValue(profile.Location),
 		Bio:         profile.Bio,
 		AvatarURL:   req.AvatarURL, // Usar datos del request ya que están en el usuario
 		CreatedAt:   profile.CreatedAt,
@@ -94,4 +94,12 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 	}
 
 	response.WriteJSON(w, http.StatusCreated, resp)
+}
+
+// getStringValue safely dereferences a string pointer
+func getStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

@@ -76,8 +76,8 @@ func (h *LabourProfileHandler) CreateLabourProfile(w http.ResponseWriter, r *htt
 			return
 		}
 
-		// Generic error for other cases
-		response.WriteError(w, http.StatusInternalServerError, "Failed to create labour profile")
+		// Generic error for other cases - include actual error for debugging
+		response.WriteError(w, http.StatusInternalServerError, "Failed to create labour profile: "+err.Error())
 		return
 	}
 
