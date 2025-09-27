@@ -200,6 +200,205 @@ func (h *JobHandler) GetJobsByBuilder(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusOK, resp)
 }
 
+// GetMyJobs retrieves jobs for the authenticated builder
+func (h *JobHandler) GetMyJobs(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by auth middleware)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
+		return
+	}
+
+	// Get builder profile ID from user ID
+	builderProfile, err := h.builderProfileRepo.GetByUserID(r.Context(), userID)
+	if err != nil {
+		response.WriteError(w, http.StatusNotFound, "Builder profile not found")
+		return
+	}
+
+	// Get visibility filter from query params
+	var visibility *models.JobVisibility
+	if vis := r.URL.Query().Get("visibility"); vis != "" {
+		v := models.JobVisibility(vis)
+		visibility = &v
+	}
+
+	jobs, err := h.jobUsecase.GetJobsByBuilder(r.Context(), builderProfile.ID, visibility)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get jobs")
+		return
+	}
+
+	// Convert to response
+	var jobsResp []payload.JobResponse
+	for _, job := range jobs {
+		jobsResp = append(jobsResp, h.convertToJobResponse(job))
+	}
+
+	resp := payload.GetJobsResponse{
+		Jobs:    jobsResp,
+		Message: "Jobs retrieved successfully",
+	}
+
+	response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// GetBuilderApplicants retrieves all applicants for the authenticated builder's jobs
+func (h *JobHandler) GetBuilderApplicants(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by auth middleware)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
+		return
+	}
+
+	// Get builder profile ID from user ID
+	builderProfile, err := h.builderProfileRepo.GetByUserID(r.Context(), userID)
+	if err != nil {
+		response.WriteError(w, http.StatusNotFound, "Builder profile not found")
+		return
+	}
+
+	// Get applicants for builder's jobs
+	jobsWithApplicants, err := h.jobUsecase.GetBuilderApplicants(r.Context(), builderProfile.ID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get applicants")
+		return
+	}
+
+	resp := payload.BuilderApplicantsResponse{
+		Jobs:    jobsWithApplicants,
+		Total:   len(jobsWithApplicants),
+		Message: "Applicants retrieved successfully",
+	}
+
+	response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ProcessApplicantDecision processes hiring or rejection of an applicant
+func (h *JobHandler) ProcessApplicantDecision(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by auth middleware)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
+		return
+	}
+
+	// Get builder profile ID from user ID
+	builderProfile, err := h.builderProfileRepo.GetByUserID(r.Context(), userID)
+	if err != nil {
+		response.WriteError(w, http.StatusNotFound, "Builder profile not found")
+		return
+	}
+
+	var req payload.BuilderApplicantDecisionRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := validation.ValidateStruct(req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Process the decision
+	result, err := h.jobUsecase.ProcessApplicantDecision(r.Context(), builderProfile.ID, req)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to process applicant decision")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, result)
+}
+
+// GetLabourJobs retrieves all jobs with application status for a labour user
+func (h *JobHandler) GetLabourJobs(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by auth middleware)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
+		return
+	}
+
+	// Get jobs with application status for this labour user
+	jobs, err := h.jobUsecase.GetLabourJobs(r.Context(), userID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get jobs")
+		return
+	}
+
+	resp := payload.LabourJobsResponse{
+		Jobs:    jobs,
+		Total:   len(jobs),
+		Message: "Jobs retrieved successfully",
+	}
+
+	response.WriteJSON(w, http.StatusOK, resp)
+}
+
+// ApplyToJob allows a labour user to apply for a job
+func (h *JobHandler) ApplyToJob(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by auth middleware)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
+		return
+	}
+
+	var req payload.LabourApplicationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Validate request
+	if err := validation.ValidateStruct(req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Apply to job
+	result, err := h.jobUsecase.ApplyToJob(r.Context(), userID, req)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to apply to job")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusCreated, result)
+}
+
 // GetJobsByJobsite retrieves jobs by jobsite ID
 func (h *JobHandler) GetJobsByJobsite(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

@@ -18,6 +18,8 @@ import (
 	builder_rest "github.com/yakka-backend/internal/features/builder_profiles/delivery/rest"
 	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_usecase "github.com/yakka-backend/internal/features/builder_profiles/usecase"
+	job_application_db "github.com/yakka-backend/internal/features/job_applications/entity/database"
+	job_assignment_db "github.com/yakka-backend/internal/features/job_assignments/entity/database"
 	job_db "github.com/yakka-backend/internal/features/jobs/entity/database"
 	job_usecase "github.com/yakka-backend/internal/features/jobs/usecase"
 	jobsite_rest "github.com/yakka-backend/internal/features/jobsites/delivery/rest"
@@ -93,11 +95,20 @@ func main() {
 	jobRepo := job_db.NewJobRepository(database.DB)
 	jobLicenseRepo := job_db.NewJobLicenseRepository(database.DB)
 	jobSkillRepo := job_db.NewJobSkillRepository(database.DB)
+
+	// Job Application repositories
+	jobApplicationRepo := job_application_db.NewJobApplicationRepository(database.DB)
+
+	// Job Assignment repositories
+	jobAssignmentRepo := job_assignment_db.NewJobAssignmentRepository(database.DB)
+
 	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, experienceRepo)
 	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo, licenseRepo)
 	jobsiteUseCase := jobsite_usecase.NewJobsiteUsecaseImpl(jobsiteRepo)
 	paymentConstantUseCase := payment_constant_usecase.NewPaymentConstantUsecase(paymentConstantRepo)
-	jobUseCase := job_usecase.NewJobUsecase(jobRepo, jobLicenseRepo, jobSkillRepo, builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo)
+	// jobApplicationUseCase := job_application_usecase.NewJobApplicationUsecase(jobApplicationRepo) // Available for future use
+	// jobAssignmentUseCase := job_assignment_usecase.NewJobAssignmentUsecase(jobAssignmentRepo) // Available for future use
+	jobUseCase := job_usecase.NewJobUsecase(jobRepo, jobLicenseRepo, jobSkillRepo, builderRepo, jobsiteRepo, jobTypeRepo, jobApplicationRepo, jobAssignmentRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
@@ -107,6 +118,8 @@ func main() {
 	labourProfileHandler := labour_rest.NewLabourProfileHandler(labourProfileUseCase)
 	builderProfileHandler := builder_rest.NewBuilderProfileHandler(builderProfileUseCase)
 	jobsiteHandler := jobsite_rest.NewJobsiteHandler(jobsiteUseCase)
+	// jobApplicationHandler := job_application_rest.NewJobApplicationHandler(jobApplicationUseCase) // Available for future use
+	// jobAssignmentHandler := job_assignment_rest.NewJobAssignmentHandler(jobAssignmentUseCase) // Available for future use
 
 	// Initialize router
 	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler, jobUseCase, builderRepo, paymentConstantUseCase, jobRequirementRepo, jobTypeRepo)

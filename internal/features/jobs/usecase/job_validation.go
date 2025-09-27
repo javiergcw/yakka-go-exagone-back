@@ -119,8 +119,14 @@ func (v *JobValidationService) validateJobsite(ctx context.Context, jobsiteID uu
 		return fmt.Errorf("jobsite with ID %s does not exist: %w", jobsiteID, err)
 	}
 
-	// Check if jobsite belongs to the builder
-	if jobsite.BuilderID != builderProfileID {
+	// Get the builder profile to get the user ID
+	builderProfile, err := v.builderRepo.GetByID(ctx, builderProfileID)
+	if err != nil {
+		return fmt.Errorf("builder profile with ID %s does not exist: %w", builderProfileID, err)
+	}
+
+	// Check if jobsite belongs to the builder (compare jobsite.BuilderID with builderProfile.UserID)
+	if jobsite.BuilderID != builderProfile.UserID {
 		return fmt.Errorf("jobsite with ID %s does not belong to builder %s", jobsiteID, builderProfileID)
 	}
 

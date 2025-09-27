@@ -120,7 +120,14 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/jobsites/{id}", middleware.BuilderMiddleware(http.HandlerFunc(r.jobsiteHandler.DeleteJobsite))).Methods("DELETE")
 
 	// Job endpoints (require builder role)
-	api.Handle("/jobs", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.CreateJob))).Methods("POST")
+	api.Handle("/builder/jobs", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.CreateJob))).Methods("POST")
+	api.Handle("/builder/jobs", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.GetMyJobs))).Methods("GET")
+	api.Handle("/builder/applicants", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.GetBuilderApplicants))).Methods("GET")
+	api.Handle("/builder/applicants", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.ProcessApplicantDecision))).Methods("POST")
+
+	// Labour endpoints (require authentication)
+	api.Handle("/labour/jobs", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobs))).Methods("GET")
+	api.Handle("/labour/applicants", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.ApplyToJob))).Methods("POST")
 
 	//labour endpoints
 
