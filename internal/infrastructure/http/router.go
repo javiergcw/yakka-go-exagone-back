@@ -155,7 +155,7 @@ func (r *Router) healthCheck(w http.ResponseWriter, req *http.Request) {
 	healthResp := response.HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
-		Version:   "1.1.0",
+		Version:   "1.2.0",
 		Data: map[string]interface{}{
 			"uptime":  "running",
 			"license": "YAKKA-PROD-2024-8F9E2A1B-3C4D5E6F-7A8B9C0D-1E2F3A4B", // License for master tables endpoints

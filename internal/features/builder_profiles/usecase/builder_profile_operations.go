@@ -67,7 +67,7 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 		UserID:      userID,
 		CompanyName: req.CompanyName,
 		DisplayName: &req.DisplayName,
-		Location:    &req.Location,
+		Location:    req.Location,
 		Bio:         req.Bio,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
