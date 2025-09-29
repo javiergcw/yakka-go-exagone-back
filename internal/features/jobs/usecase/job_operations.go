@@ -100,6 +100,9 @@ func (u *jobUsecase) CreateJob(ctx context.Context, req payload.CreateJobRequest
 		WageLeadingHandAllowance:    req.WageLeadingHandAllowance,
 		WageProductivityAllowance:   req.WageProductivityAllowance,
 		ExtrasOvertimeRate:          req.ExtrasOvertimeRate,
+		WageHourlyRate:              req.WageHourlyRate,
+		TravelAllowance:             req.TravelAllowance,
+		GST:                         req.GST,
 		StartDateWork:               req.StartDateWork,
 		EndDateWork:                 req.EndDateWork,
 		WorkSaturday:                req.WorkSaturday,
@@ -130,7 +133,8 @@ func (u *jobUsecase) CreateJob(ctx context.Context, req payload.CreateJobRequest
 		}
 	}
 
-	// Create job skill category relationships
+	// Create job skill relationships - one record per skill
+	// Create records for skill categories only (without subcategories)
 	for _, skillCategoryID := range req.SkillCategoryIDs {
 		jobSkill := &models.JobSkill{
 			JobID:           job.ID,
@@ -141,7 +145,7 @@ func (u *jobUsecase) CreateJob(ctx context.Context, req payload.CreateJobRequest
 		}
 	}
 
-	// Create job skill subcategory relationships
+	// Create records for skill subcategories only (without categories)
 	for _, skillSubcategoryID := range req.SkillSubcategoryIDs {
 		jobSkill := &models.JobSkill{
 			JobID:              job.ID,
@@ -250,6 +254,15 @@ func (u *jobUsecase) UpdateJob(ctx context.Context, id uuid.UUID, req payload.Up
 	}
 	if req.ExtrasOvertimeRate != nil {
 		job.ExtrasOvertimeRate = req.ExtrasOvertimeRate
+	}
+	if req.WageHourlyRate != nil {
+		job.WageHourlyRate = req.WageHourlyRate
+	}
+	if req.TravelAllowance != nil {
+		job.TravelAllowance = req.TravelAllowance
+	}
+	if req.GST != nil {
+		job.GST = req.GST
 	}
 	if req.StartDateWork != nil {
 		job.StartDateWork = req.StartDateWork

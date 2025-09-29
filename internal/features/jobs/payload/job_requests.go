@@ -18,6 +18,9 @@ type CreateJobRequest struct {
 	WageLeadingHandAllowance    *float64             `json:"wage_leading_hand_allowance"`
 	WageProductivityAllowance   *float64             `json:"wage_productivity_allowance"`
 	ExtrasOvertimeRate          *float64             `json:"extras_overtime_rate"`
+	WageHourlyRate              *float64             `json:"wage_hourly_rate"`
+	TravelAllowance            *float64             `json:"travel_allowance"`
+	GST                         *float64             `json:"gst"`
 	StartDateWork               *time.Time           `json:"start_date_work"`
 	EndDateWork                 *time.Time           `json:"end_date_work"`
 	WorkSaturday                bool                 `json:"work_saturday"`
@@ -48,6 +51,9 @@ type UpdateJobRequest struct {
 	WageLeadingHandAllowance    *float64              `json:"wage_leading_hand_allowance"`
 	WageProductivityAllowance   *float64              `json:"wage_productivity_allowance"`
 	ExtrasOvertimeRate          *float64              `json:"extras_overtime_rate"`
+	WageHourlyRate              *float64              `json:"wage_hourly_rate"`
+	TravelAllowance            *float64              `json:"travel_allowance"`
+	GST                         *float64              `json:"gst"`
 	StartDateWork               *time.Time            `json:"start_date_work"`
 	EndDateWork                 *time.Time            `json:"end_date_work"`
 	WorkSaturday                *bool                 `json:"work_saturday"`
