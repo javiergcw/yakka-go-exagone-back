@@ -89,14 +89,8 @@ func (r *jobRepository) Delete(ctx context.Context, id uuid.UUID) error {
 func (r *jobRepository) GetWithRelations(ctx context.Context, id uuid.UUID) (*models.Job, error) {
 	var job models.Job
 	err := r.db.WithContext(ctx).
-		Preload("BuilderProfile").
-		Preload("Jobsite").
-		Preload("JobType").
 		Preload("JobLicenses").
-		Preload("JobLicenses.License").
 		Preload("JobSkills").
-		Preload("JobSkills.SkillCategory").
-		Preload("JobSkills.SkillSubcategory").
 		Where("id = ?", id).
 		First(&job).Error
 	if err != nil {

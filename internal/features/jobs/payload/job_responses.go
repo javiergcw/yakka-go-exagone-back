@@ -9,30 +9,33 @@ import (
 
 // JobResponse represents a job in API responses
 type JobResponse struct {
-	ID                        uuid.UUID                `json:"id"`
-	BuilderProfileID          uuid.UUID                `json:"builder_profile_id"`
-	JobsiteID                 uuid.UUID                `json:"jobsite_id"`
-	JobTypeID                 uuid.UUID                `json:"job_type_id"`
-	ManyLabours               int                      `json:"many_labours"`
-	OngoingWork               bool                     `json:"ongoing_work"`
-	WageSiteAllowance         *float64                 `json:"wage_site_allowance"`
-	WageLeadingHandAllowance  *float64                 `json:"wage_leading_hand_allowance"`
-	WageProductivityAllowance *float64                 `json:"wage_productivity_allowance"`
-	ExtrasOvertimeRate        *float64                 `json:"extras_overtime_rate"`
-	StartDateWork             *time.Time               `json:"start_date_work"`
-	EndDateWork               *time.Time               `json:"end_date_work"`
-	WorkSaturday              bool                     `json:"work_saturday"`
-	WorkSunday                bool                     `json:"work_sunday"`
-	StartTime                 *string                  `json:"start_time"`
-	EndTime                   *string                  `json:"end_time"`
-	Description               *string                  `json:"description"`
-	PaymentDay                *int                    `json:"payment_day"`
-	RequiresSupervisorSignature bool                   `json:"requires_supervisor_signature"`
-	SupervisorName            *string                  `json:"supervisor_name"`
-	Visibility                models.JobVisibility     `json:"visibility"`
-	PaymentType               models.PaymentType      `json:"payment_type"`
-	CreatedAt                 time.Time                `json:"created_at"`
-	UpdatedAt                 time.Time                `json:"updated_at"`
+	ID                          uuid.UUID            `json:"id"`
+	BuilderProfileID            uuid.UUID            `json:"builder_profile_id"`
+	JobsiteID                   uuid.UUID            `json:"jobsite_id"`
+	JobTypeID                   uuid.UUID            `json:"job_type_id"`
+	ManyLabours                 int                  `json:"many_labours"`
+	OngoingWork                 bool                 `json:"ongoing_work"`
+	WageSiteAllowance           *float64             `json:"wage_site_allowance"`
+	WageLeadingHandAllowance    *float64             `json:"wage_leading_hand_allowance"`
+	WageProductivityAllowance   *float64             `json:"wage_productivity_allowance"`
+	ExtrasOvertimeRate          *float64             `json:"extras_overtime_rate"`
+	WageHourlyRate              *float64             `json:"wage_hourly_rate"`
+	TravelAllowance             *float64             `json:"travel_allowance"`
+	GST                         *float64             `json:"gst"`
+	StartDateWork               *time.Time           `json:"start_date_work"`
+	EndDateWork                 *time.Time           `json:"end_date_work"`
+	WorkSaturday                bool                 `json:"work_saturday"`
+	WorkSunday                  bool                 `json:"work_sunday"`
+	StartTime                   *string              `json:"start_time"`
+	EndTime                     *string              `json:"end_time"`
+	Description                 *string              `json:"description"`
+	PaymentDay                  *int                 `json:"payment_day"`
+	RequiresSupervisorSignature bool                 `json:"requires_supervisor_signature"`
+	SupervisorName              *string              `json:"supervisor_name"`
+	Visibility                  models.JobVisibility `json:"visibility"`
+	PaymentType                 models.PaymentType   `json:"payment_type"`
+	CreatedAt                   time.Time            `json:"created_at"`
+	UpdatedAt                   time.Time            `json:"updated_at"`
 
 	// Relations
 	BuilderProfile *BuilderProfileResponse `json:"builder_profile,omitempty"`
@@ -44,16 +47,16 @@ type JobResponse struct {
 
 // BuilderProfileResponse represents a builder profile in responses
 type BuilderProfileResponse struct {
-	ID        uuid.UUID `json:"id"`
-	CompanyName string  `json:"company_name"`
+	ID          uuid.UUID `json:"id"`
+	CompanyName string    `json:"company_name"`
 	// Add other builder profile fields as needed
 }
 
 // JobsiteResponse represents a jobsite in responses
 type JobsiteResponse struct {
-	ID          uuid.UUID `json:"id"`
-	Name        string    `json:"name"`
-	Address     string    `json:"address"`
+	ID      uuid.UUID `json:"id"`
+	Name    string    `json:"name"`
+	Address string    `json:"address"`
 	// Add other jobsite fields as needed
 }
 
@@ -66,11 +69,11 @@ type JobTypeResponse struct {
 
 // JobLicenseResponse represents a job license in responses
 type JobLicenseResponse struct {
-	ID        uuid.UUID `json:"id"`
-	JobID     uuid.UUID `json:"job_id"`
-	LicenseID uuid.UUID `json:"license_id"`
+	ID        uuid.UUID        `json:"id"`
+	JobID     uuid.UUID        `json:"job_id"`
+	LicenseID uuid.UUID        `json:"license_id"`
 	License   *LicenseResponse `json:"license,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time        `json:"created_at"`
 }
 
 // LicenseResponse represents a license in responses
@@ -82,13 +85,13 @@ type LicenseResponse struct {
 
 // JobSkillResponse represents a job skill in responses
 type JobSkillResponse struct {
-	ID              uuid.UUID `json:"id"`
-	JobID           uuid.UUID `json:"job_id"`
-	SkillCategoryID  *uuid.UUID `json:"skill_category_id"`
-	SkillSubcategoryID *uuid.UUID `json:"skill_subcategory_id"`
-	SkillCategory   *SkillCategoryResponse   `json:"skill_category,omitempty"`
-	SkillSubcategory *SkillSubcategoryResponse `json:"skill_subcategory,omitempty"`
-	CreatedAt       time.Time `json:"created_at"`
+	ID                 uuid.UUID                 `json:"id"`
+	JobID              uuid.UUID                 `json:"job_id"`
+	SkillCategoryID    *uuid.UUID                `json:"skill_category_id"`
+	SkillSubcategoryID *uuid.UUID                `json:"skill_subcategory_id"`
+	SkillCategory      *SkillCategoryResponse    `json:"skill_category,omitempty"`
+	SkillSubcategory   *SkillSubcategoryResponse `json:"skill_subcategory,omitempty"`
+	CreatedAt          time.Time                 `json:"created_at"`
 }
 
 // SkillCategoryResponse represents a skill category in responses
@@ -132,4 +135,29 @@ type UpdateJobResponse struct {
 // DeleteJobResponse represents the response when deleting a job
 type DeleteJobResponse struct {
 	Message string `json:"message"`
+}
+
+// UpdateJobVisibilityResponse represents the response when updating job visibility
+type UpdateJobVisibilityResponse struct {
+	Job     JobResponse `json:"job"`
+	Message string      `json:"message"`
+}
+
+// LabourJobDetailResponse represents the response for labour job detail with application info
+type LabourJobDetailResponse struct {
+	Job         JobResponse         `json:"job"`
+	Application *JobApplicationInfo `json:"application"`
+	Message     string              `json:"message"`
+}
+
+// JobApplicationInfo represents application information for a labour user
+type JobApplicationInfo struct {
+	ID           uuid.UUID  `json:"id"`
+	Status       string     `json:"status"`
+	CoverLetter  *string    `json:"cover_letter,omitempty"`
+	ExpectedRate *float64   `json:"expected_rate,omitempty"`
+	ResumeURL    *string    `json:"resume_url,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	WithdrawnAt  *time.Time `json:"withdrawn_at,omitempty"`
 }

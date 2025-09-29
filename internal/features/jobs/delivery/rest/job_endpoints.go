@@ -2,6 +2,7 @@ package rest
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -638,4 +639,136 @@ func (h *JobHandler) convertToJobResponse(job *models.Job) payload.JobResponse {
 	// }
 
 	return jobResp
+}
+
+// GetLabourJobDetail retrieves a job detail for a labour user with application info
+func (h *JobHandler) GetLabourJobDetail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jobID, err := uuid.Parse(vars["id"])
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	// Get labour user ID from context (set by AuthMiddleware)
+	log.Printf("🔍 Labour Handler - Checking context for user_id")
+	labourUserIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		log.Printf("🚫 Labour Handler - User ID not found in context")
+		response.WriteError(w, http.StatusUnauthorized, "User ID not found in context")
+		return
+	}
+	log.Printf("🔍 Labour Handler - User ID found: %s", labourUserIDStr)
+
+	// Parse string to UUID
+	labourUserID, err := uuid.Parse(labourUserIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID format")
+		return
+	}
+
+	// Get job detail with application info
+	jobDetail, err := h.jobUsecase.GetLabourJobDetail(r.Context(), jobID, labourUserID)
+	if err != nil {
+		response.WriteError(w, http.StatusNotFound, "Job not found")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, jobDetail)
+}
+
+// GetBuilderJobDetail retrieves a job detail for a builder (only their own jobs)
+func (h *JobHandler) GetBuilderJobDetail(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jobID, err := uuid.Parse(vars["id"])
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	// Get builder profile ID from context (set by BuilderMiddleware)
+	log.Printf("🔍 Handler - Checking context for builder_profile_id")
+	builderProfileIDStr, ok := r.Context().Value(middleware.BuilderProfileIDKey).(string)
+	if !ok {
+		log.Printf("🚫 Handler - Builder profile ID not found in context")
+		response.WriteError(w, http.StatusUnauthorized, "Builder profile ID not found in context")
+		return
+	}
+	log.Printf("🔍 Handler - Builder profile ID found: %s", builderProfileIDStr)
+
+	// Parse string to UUID
+	builderProfileID, err := uuid.Parse(builderProfileIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid builder profile ID format")
+		return
+	}
+
+	// Get job detail (only if owned by builder)
+	jobDetail, err := h.jobUsecase.GetBuilderJobDetail(r.Context(), jobID, builderProfileID)
+	if err != nil {
+		if err.Error() == "job not found" {
+			response.WriteError(w, http.StatusNotFound, "Job not found")
+			return
+		}
+		if err.Error() == "invalid job - not owned by builder" {
+			response.WriteError(w, http.StatusForbidden, "Invalid job - not owned by builder")
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get job detail")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, jobDetail)
+}
+
+// UpdateJobVisibility updates the visibility of a job (only for the owner builder)
+func (h *JobHandler) UpdateJobVisibility(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	jobID, err := uuid.Parse(vars["id"])
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, "Invalid job ID")
+		return
+	}
+
+	log.Printf("🔍 UpdateJobVisibility - Job ID: %s", jobID)
+
+	// Get builder profile ID from context (set by BuilderMiddleware)
+	builderProfileIDStr, ok := r.Context().Value(middleware.BuilderProfileIDKey).(string)
+	if !ok {
+		log.Printf("🚫 UpdateJobVisibility - Builder profile ID not found in context")
+		response.WriteError(w, http.StatusUnauthorized, "Builder profile ID not found in context")
+		return
+	}
+	log.Printf("🔍 UpdateJobVisibility - Builder Profile ID: %s", builderProfileIDStr)
+
+	// Parse string to UUID
+	builderProfileID, err := uuid.Parse(builderProfileIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid builder profile ID format")
+		return
+	}
+
+	// Parse request body
+	var req payload.UpdateJobVisibilityRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.WriteError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Update job visibility (only if owned by builder)
+	jobDetail, err := h.jobUsecase.UpdateJobVisibility(r.Context(), jobID, builderProfileID, req)
+	if err != nil {
+		if err.Error() == "job not found" {
+			response.WriteError(w, http.StatusNotFound, "Job not found")
+			return
+		}
+		if err.Error() == "invalid job - not owned by builder" {
+			response.WriteError(w, http.StatusForbidden, "Invalid job - not owned by builder")
+			return
+		}
+		response.WriteError(w, http.StatusInternalServerError, "Failed to update job visibility")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, jobDetail)
 }

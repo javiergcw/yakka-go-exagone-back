@@ -16,7 +16,8 @@ import (
 type ContextKey string
 
 const (
-	UserIDKey ContextKey = "user_id"
+	UserIDKey           ContextKey = "user_id"
+	BuilderProfileIDKey ContextKey = "builder_profile_id"
 )
 
 // JWTSecret should be loaded from environment variables in production
@@ -63,6 +64,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		// Add user ID to context
 		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+		log.Printf("🔍 AuthMiddleware - User ID set in context: %s", claims.UserID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -147,8 +149,26 @@ func BuilderMiddleware(next http.Handler) http.Handler {
 
 		log.Printf("🔐 Builder access granted for user: %s", userID)
 
-		// Add user ID to context
+		// Get builder profile ID for this user
+		var builderProfileID string
+		err = database.DB.Raw("SELECT id FROM builder_profiles WHERE user_id = ?", userID).Scan(&builderProfileID).Error
+		if err != nil {
+			log.Printf("🔍 Failed to get builder profile ID: %v", err)
+			response.WriteError(w, http.StatusInternalServerError, "Failed to get builder profile")
+			return
+		}
+
+		if builderProfileID == "" {
+			log.Printf("🚫 No builder profile found for user: %s", userID)
+			response.WriteError(w, http.StatusForbidden, "Builder profile not found")
+			return
+		}
+
+		// Add user ID and builder profile ID to context
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		ctx = context.WithValue(ctx, BuilderProfileIDKey, builderProfileID)
+
+		log.Printf("🔍 Context values set - UserID: %s, BuilderProfileID: %s", userID, builderProfileID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

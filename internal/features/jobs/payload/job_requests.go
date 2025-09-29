@@ -35,6 +35,11 @@ type CreateJobRequest struct {
 	SkillSubcategoryIDs         []uuid.UUID          `json:"skill_subcategory_ids"`
 }
 
+// UpdateJobVisibilityRequest represents the request to update job visibility
+type UpdateJobVisibilityRequest struct {
+	Visibility models.JobVisibility `json:"visibility" validate:"required,oneof=DRAFT PUBLIC PRIVATE"`
+}
+
 // UpdateJobRequest represents the request to update a job
 type UpdateJobRequest struct {
 	ManyLabours                 *int                  `json:"many_labours"`

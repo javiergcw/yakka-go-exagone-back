@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ import (
 	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
 	skill_category_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
+	"gorm.io/gorm"
 )
 
 // JobUsecase defines the interface for job business logic
@@ -35,6 +37,9 @@ type JobUsecase interface {
 	ProcessApplicantDecision(ctx context.Context, builderProfileID uuid.UUID, req payload.BuilderApplicantDecisionRequest) (*payload.BuilderApplicantDecisionResponse, error)
 	GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) ([]payload.LabourJobInfo, error)
 	ApplyToJob(ctx context.Context, labourUserID uuid.UUID, req payload.LabourApplicationRequest) (*payload.LabourApplicationResponse, error)
+	GetLabourJobDetail(ctx context.Context, jobID uuid.UUID, labourUserID uuid.UUID) (*payload.LabourJobDetailResponse, error)
+	GetBuilderJobDetail(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID) (*payload.GetJobResponse, error)
+	UpdateJobVisibility(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID, req payload.UpdateJobVisibilityRequest) (*payload.UpdateJobVisibilityResponse, error)
 }
 
 // jobUsecase implements JobUsecase
@@ -585,6 +590,165 @@ func (u *jobUsecase) ApplyToJob(ctx context.Context, labourUserID uuid.UUID, req
 		ResumeURL:     application.ResumeURL,
 		AppliedAt:     application.CreatedAt,
 		Message:       "Application submitted successfully",
+	}
+
+	return response, nil
+}
+
+// GetLabourJobDetail retrieves a job detail for a labour user with application info
+func (u *jobUsecase) GetLabourJobDetail(ctx context.Context, jobID uuid.UUID, labourUserID uuid.UUID) (*payload.LabourJobDetailResponse, error) {
+	// Get job with all relations
+	job, err := u.jobRepo.GetWithRelations(ctx, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job: %w", err)
+	}
+
+	// Convert job to response
+	jobResp := u.convertToJobResponse(job)
+
+	// Check if user has applied to this job
+	application, err := u.jobApplicationRepo.GetByJobAndLabourUser(ctx, jobID, labourUserID)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("failed to check application: %w", err)
+	}
+
+	response := &payload.LabourJobDetailResponse{
+		Job:     jobResp,
+		Message: "Job detail retrieved successfully",
+	}
+
+	// If application exists, add it to response
+	if application != nil {
+		applicationInfo := &payload.JobApplicationInfo{
+			ID:           application.ID,
+			Status:       string(application.Status),
+			CoverLetter:  application.CoverLetter,
+			ExpectedRate: application.ExpectedRate,
+			ResumeURL:    application.ResumeURL,
+			CreatedAt:    application.CreatedAt,
+			UpdatedAt:    application.UpdatedAt,
+			WithdrawnAt:  application.WithdrawnAt,
+		}
+		response.Application = applicationInfo
+	}
+
+	return response, nil
+}
+
+// convertToJobResponse converts a Job model to JobResponse
+func (u *jobUsecase) convertToJobResponse(job *models.Job) payload.JobResponse {
+	jobResp := payload.JobResponse{
+		ID:                          job.ID,
+		BuilderProfileID:            job.BuilderProfileID,
+		JobsiteID:                   job.JobsiteID,
+		JobTypeID:                   job.JobTypeID,
+		ManyLabours:                 job.ManyLabours,
+		OngoingWork:                 job.OngoingWork,
+		WageSiteAllowance:           job.WageSiteAllowance,
+		WageLeadingHandAllowance:    job.WageLeadingHandAllowance,
+		WageProductivityAllowance:   job.WageProductivityAllowance,
+		ExtrasOvertimeRate:          job.ExtrasOvertimeRate,
+		WageHourlyRate:              job.WageHourlyRate,
+		TravelAllowance:             job.TravelAllowance,
+		GST:                         job.GST,
+		StartDateWork:               job.StartDateWork,
+		EndDateWork:                 job.EndDateWork,
+		WorkSaturday:                job.WorkSaturday,
+		WorkSunday:                  job.WorkSunday,
+		StartTime:                   job.StartTime,
+		EndTime:                     job.EndTime,
+		Description:                 job.Description,
+		PaymentDay:                  job.PaymentDay,
+		RequiresSupervisorSignature: job.RequiresSupervisorSignature,
+		SupervisorName:              job.SupervisorName,
+		Visibility:                  job.Visibility,
+		PaymentType:                 job.PaymentType,
+		CreatedAt:                   job.CreatedAt,
+		UpdatedAt:                   job.UpdatedAt,
+	}
+
+	// Convert job licenses (basic info only)
+	for _, jobLicense := range job.JobLicenses {
+		jobLicenseResp := payload.JobLicenseResponse{
+			ID:        jobLicense.ID,
+			JobID:     jobLicense.JobID,
+			LicenseID: jobLicense.LicenseID,
+			CreatedAt: jobLicense.CreatedAt,
+		}
+		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
+	}
+
+	// Convert job skills (basic info only)
+	for _, jobSkill := range job.JobSkills {
+		jobSkillResp := payload.JobSkillResponse{
+			ID:                 jobSkill.ID,
+			JobID:              jobSkill.JobID,
+			SkillCategoryID:    jobSkill.SkillCategoryID,
+			SkillSubcategoryID: jobSkill.SkillSubcategoryID,
+			CreatedAt:          jobSkill.CreatedAt,
+		}
+		jobResp.JobSkills = append(jobResp.JobSkills, jobSkillResp)
+	}
+
+	return jobResp
+}
+
+// GetBuilderJobDetail retrieves a job detail for a builder (only their own jobs)
+func (u *jobUsecase) GetBuilderJobDetail(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID) (*payload.GetJobResponse, error) {
+	// Get job with all relations
+	job, err := u.jobRepo.GetWithRelations(ctx, jobID)
+	if err != nil {
+		return nil, fmt.Errorf("job not found")
+	}
+
+	// Verify that the job belongs to the builder
+	if job.BuilderProfileID != builderProfileID {
+		return nil, fmt.Errorf("invalid job - not owned by builder")
+	}
+
+	// Convert job to response
+	jobResp := u.convertToJobResponse(job)
+
+	response := &payload.GetJobResponse{
+		Job:     jobResp,
+		Message: "Job detail retrieved successfully",
+	}
+
+	return response, nil
+}
+
+// UpdateJobVisibility updates the visibility of a job (only for the owner builder)
+func (u *jobUsecase) UpdateJobVisibility(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID, req payload.UpdateJobVisibilityRequest) (*payload.UpdateJobVisibilityResponse, error) {
+	log.Printf("🔍 UpdateJobVisibility Usecase - Job ID: %s, Builder Profile ID: %s", jobID, builderProfileID)
+
+	// Get job to verify ownership
+	job, err := u.jobRepo.GetByID(ctx, jobID)
+	if err != nil {
+		log.Printf("🚫 UpdateJobVisibility Usecase - Job not found: %v", err)
+		return nil, fmt.Errorf("job not found")
+	}
+	log.Printf("🔍 UpdateJobVisibility Usecase - Job found, Builder Profile ID: %s", job.BuilderProfileID)
+
+	// Verify that the job belongs to the builder
+	if job.BuilderProfileID != builderProfileID {
+		return nil, fmt.Errorf("invalid job - not owned by builder")
+	}
+
+	// Update only the visibility field
+	job.Visibility = req.Visibility
+	job.UpdatedAt = time.Now()
+
+	// Save the updated job
+	if err := u.jobRepo.Update(ctx, job); err != nil {
+		return nil, fmt.Errorf("failed to update job visibility: %w", err)
+	}
+
+	// Convert job to response
+	jobResp := u.convertToJobResponse(job)
+
+	response := &payload.UpdateJobVisibilityResponse{
+		Job:     jobResp,
+		Message: "Job visibility updated successfully",
 	}
 
 	return response, nil

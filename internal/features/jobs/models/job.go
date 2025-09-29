@@ -18,6 +18,9 @@ type Job struct {
 	WageLeadingHandAllowance    *float64      `json:"wage_leading_hand_allowance" gorm:"type:decimal(10,2)"`
 	WageProductivityAllowance   *float64      `json:"wage_productivity_allowance" gorm:"type:decimal(10,2)"`
 	ExtrasOvertimeRate          *float64      `json:"extras_overtime_rate" gorm:"type:decimal(10,2)"`
+	WageHourlyRate              *float64      `json:"wage_hourly_rate" gorm:"type:decimal(10,2)"`
+	TravelAllowance             *float64      `json:"travel_allowance" gorm:"type:decimal(10,2)"`
+	GST                         *float64      `json:"gst" gorm:"type:decimal(10,2)"`
 	StartDateWork               *time.Time    `json:"start_date_work" gorm:"type:date"`
 	EndDateWork                 *time.Time    `json:"end_date_work" gorm:"type:date"`
 	WorkSaturday                bool          `json:"work_saturday" gorm:"not null;default:false"`

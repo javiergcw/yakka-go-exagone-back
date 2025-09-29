@@ -122,11 +122,14 @@ func (r *Router) SetupRoutes() http.Handler {
 	// Job endpoints (require builder role)
 	api.Handle("/builder/jobs", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.CreateJob))).Methods("POST")
 	api.Handle("/builder/jobs", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.GetMyJobs))).Methods("GET")
+	api.Handle("/builder/jobs/{id}", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.GetBuilderJobDetail))).Methods("GET")
+	api.Handle("/builder/jobs/{id}/visibility", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.UpdateJobVisibility))).Methods("PUT")
 	api.Handle("/builder/applicants", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.GetBuilderApplicants))).Methods("GET")
 	api.Handle("/builder/applicants", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.ProcessApplicantDecision))).Methods("POST")
 
 	// Labour endpoints (require authentication)
 	api.Handle("/labour/jobs", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobs))).Methods("GET")
+	api.Handle("/labour/jobs/{id}", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobDetail))).Methods("GET")
 	api.Handle("/labour/applicants", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.ApplyToJob))).Methods("POST")
 
 	//labour endpoints
@@ -155,7 +158,7 @@ func (r *Router) healthCheck(w http.ResponseWriter, req *http.Request) {
 	healthResp := response.HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
-		Version:   "1.2.0",
+		Version:   "1.3.0",
 		Data: map[string]interface{}{
 			"uptime":  "running",
 			"license": "YAKKA-PROD-2024-8F9E2A1B-3C4D5E6F-7A8B9C0D-1E2F3A4B", // License for master tables endpoints
