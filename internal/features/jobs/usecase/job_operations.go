@@ -59,6 +59,8 @@ type jobUsecase struct {
 	jobApplicationRepo    job_application_db.JobApplicationRepository
 	jobAssignmentRepo     job_assignment_db.JobAssignmentRepository
 	licenseRepo           license_db.LicenseRepository
+	skillCategoryRepo     skill_category_db.SkillCategoryRepository
+	skillSubcategoryRepo  skill_category_db.SkillSubcategoryRepository
 	validator             *JobValidationService
 }
 
@@ -90,6 +92,8 @@ func NewJobUsecase(
 		jobApplicationRepo:    jobApplicationRepo,
 		jobAssignmentRepo:     jobAssignmentRepo,
 		licenseRepo:           licenseRepo,
+		skillCategoryRepo:     skillCategoryRepo,
+		skillSubcategoryRepo:  skillSubcategoryRepo,
 		validator:             NewJobValidationService(builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, jobRequirementRepo),
 	}
 }
@@ -505,8 +509,8 @@ func (u *jobUsecase) ProcessApplicantDecision(ctx context.Context, builderProfil
 
 // GetLabourJobs retrieves all jobs with application status for a labour user
 func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) ([]payload.LabourJobInfo, error) {
-	// Get all public jobs
-	jobs, err := u.jobRepo.GetByVisibility(ctx, models.JobVisibilityPublic)
+	// Get all public jobs with relations
+	jobs, err := u.jobRepo.GetByVisibilityWithRelations(ctx, models.JobVisibilityPublic)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get public jobs: %w", err)
 	}
@@ -585,7 +589,7 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 				categoryID := jobSkill.SkillCategoryID.String()
 				skillInfo.SkillCategoryID = &categoryID
 
-				skillCategory, err := u.validator.skillCategoryRepo.GetByID(ctx, *jobSkill.SkillCategoryID)
+				skillCategory, err := u.skillCategoryRepo.GetByID(ctx, *jobSkill.SkillCategoryID)
 				if err == nil {
 					skillInfo.SkillCategory = &payload.SkillCategoryInfo{
 						ID:          skillCategory.ID.String(),
@@ -600,7 +604,7 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 				subcategoryID := jobSkill.SkillSubcategoryID.String()
 				skillInfo.SkillSubcategoryID = &subcategoryID
 
-				skillSubcategory, err := u.validator.skillSubcategoryRepo.GetByID(ctx, *jobSkill.SkillSubcategoryID)
+				skillSubcategory, err := u.skillSubcategoryRepo.GetByID(ctx, *jobSkill.SkillSubcategoryID)
 				if err == nil {
 					skillInfo.SkillSubcategory = &payload.SkillSubcategoryInfo{
 						ID:          skillSubcategory.ID.String(),

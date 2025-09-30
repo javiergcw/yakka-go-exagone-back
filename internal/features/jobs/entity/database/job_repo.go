@@ -14,6 +14,7 @@ type JobRepository interface {
 	GetByBuilderProfileID(ctx context.Context, builderProfileID uuid.UUID) ([]*models.Job, error)
 	GetByJobsiteID(ctx context.Context, jobsiteID uuid.UUID) ([]*models.Job, error)
 	GetByVisibility(ctx context.Context, visibility models.JobVisibility) ([]*models.Job, error)
+	GetByVisibilityWithRelations(ctx context.Context, visibility models.JobVisibility) ([]*models.Job, error)
 	GetAll(ctx context.Context) ([]*models.Job, error)
 	Update(ctx context.Context, job *models.Job) error
 	Delete(ctx context.Context, id uuid.UUID) error

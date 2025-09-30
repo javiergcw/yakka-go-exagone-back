@@ -65,6 +65,21 @@ func (r *jobRepository) GetByVisibility(ctx context.Context, visibility models.J
 	return jobs, nil
 }
 
+// GetByVisibilityWithRelations retrieves jobs by visibility with all relations
+func (r *jobRepository) GetByVisibilityWithRelations(ctx context.Context, visibility models.JobVisibility) ([]*models.Job, error) {
+	var jobs []*models.Job
+	err := r.db.WithContext(ctx).
+		Preload("JobLicenses").
+		Preload("JobSkills").
+		Preload("JobRequirements").
+		Where("visibility = ?", visibility).
+		Find(&jobs).Error
+	if err != nil {
+		return nil, err
+	}
+	return jobs, nil
+}
+
 // GetAll retrieves all jobs
 func (r *jobRepository) GetAll(ctx context.Context) ([]*models.Job, error) {
 	var jobs []*models.Job
