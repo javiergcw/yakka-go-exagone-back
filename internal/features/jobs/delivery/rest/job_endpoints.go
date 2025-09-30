@@ -542,9 +542,6 @@ func (h *JobHandler) DeleteJob(w http.ResponseWriter, r *http.Request) {
 func (h *JobHandler) convertToJobResponse(job *models.Job) payload.JobResponse {
 	jobResp := payload.JobResponse{
 		ID:                          job.ID,
-		BuilderProfileID:            job.BuilderProfileID,
-		JobsiteID:                   job.JobsiteID,
-		JobTypeID:                   job.JobTypeID,
 		ManyLabours:                 job.ManyLabours,
 		OngoingWork:                 job.OngoingWork,
 		WageSiteAllowance:           job.WageSiteAllowance,
@@ -707,8 +704,10 @@ func (h *JobHandler) GetBuilderJobDetail(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Get job detail (only if owned by builder)
+	log.Printf("🔍 Handler - Calling GetBuilderJobDetail with Job ID: %s, Builder Profile ID: %s", jobID, builderProfileID)
 	jobDetail, err := h.jobUsecase.GetBuilderJobDetail(r.Context(), jobID, builderProfileID)
 	if err != nil {
+		log.Printf("🚫 Handler - Error in GetBuilderJobDetail: %v", err)
 		if err.Error() == "job not found" {
 			response.WriteError(w, http.StatusNotFound, "Job not found")
 			return
@@ -720,6 +719,7 @@ func (h *JobHandler) GetBuilderJobDetail(w http.ResponseWriter, r *http.Request)
 		response.WriteError(w, http.StatusInternalServerError, "Failed to get job detail")
 		return
 	}
+	log.Printf("🔍 Handler - GetBuilderJobDetail successful, returning job detail")
 
 	response.WriteJSON(w, http.StatusOK, jobDetail)
 }

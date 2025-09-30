@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
+	builder_models "github.com/yakka-backend/internal/features/builder_profiles/models"
 	job_application_db "github.com/yakka-backend/internal/features/job_applications/entity/database"
 	job_application_models "github.com/yakka-backend/internal/features/job_applications/models"
 	job_assignment_db "github.com/yakka-backend/internal/features/job_assignments/entity/database"
@@ -16,7 +17,10 @@ import (
 	"github.com/yakka-backend/internal/features/jobs/models"
 	"github.com/yakka-backend/internal/features/jobs/payload"
 	jobsite_db "github.com/yakka-backend/internal/features/jobsites/entity/database"
+	jobsite_models "github.com/yakka-backend/internal/features/jobsites/models"
+	job_requirement_db "github.com/yakka-backend/internal/features/masters/job_requirements/entity/database"
 	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
+	job_type_models "github.com/yakka-backend/internal/features/masters/job_types/models"
 	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
 	skill_category_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
 	"gorm.io/gorm"
@@ -44,15 +48,18 @@ type JobUsecase interface {
 
 // jobUsecase implements JobUsecase
 type jobUsecase struct {
-	jobRepo            database.JobRepository
-	jobLicenseRepo     database.JobLicenseRepository
-	jobSkillRepo       database.JobSkillRepository
-	builderRepo        builder_db.BuilderProfileRepository
-	jobsiteRepo        jobsite_db.JobsiteRepository
-	jobTypeRepo        job_type_db.JobTypeRepository
-	jobApplicationRepo job_application_db.JobApplicationRepository
-	jobAssignmentRepo  job_assignment_db.JobAssignmentRepository
-	validator          *JobValidationService
+	jobRepo               database.JobRepository
+	jobLicenseRepo        database.JobLicenseRepository
+	jobSkillRepo          database.JobSkillRepository
+	jobJobRequirementRepo database.JobJobRequirementRepository
+	jobRequirementRepo    job_requirement_db.JobRequirementRepository
+	builderRepo           builder_db.BuilderProfileRepository
+	jobsiteRepo           jobsite_db.JobsiteRepository
+	jobTypeRepo           job_type_db.JobTypeRepository
+	jobApplicationRepo    job_application_db.JobApplicationRepository
+	jobAssignmentRepo     job_assignment_db.JobAssignmentRepository
+	licenseRepo           license_db.LicenseRepository
+	validator             *JobValidationService
 }
 
 // NewJobUsecase creates a new job usecase
@@ -60,6 +67,8 @@ func NewJobUsecase(
 	jobRepo database.JobRepository,
 	jobLicenseRepo database.JobLicenseRepository,
 	jobSkillRepo database.JobSkillRepository,
+	jobJobRequirementRepo database.JobJobRequirementRepository,
+	jobRequirementRepo job_requirement_db.JobRequirementRepository,
 	builderRepo builder_db.BuilderProfileRepository,
 	jobsiteRepo jobsite_db.JobsiteRepository,
 	jobTypeRepo job_type_db.JobTypeRepository,
@@ -70,15 +79,18 @@ func NewJobUsecase(
 	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository,
 ) JobUsecase {
 	return &jobUsecase{
-		jobRepo:            jobRepo,
-		jobLicenseRepo:     jobLicenseRepo,
-		jobSkillRepo:       jobSkillRepo,
-		builderRepo:        builderRepo,
-		jobsiteRepo:        jobsiteRepo,
-		jobTypeRepo:        jobTypeRepo,
-		jobApplicationRepo: jobApplicationRepo,
-		jobAssignmentRepo:  jobAssignmentRepo,
-		validator:          NewJobValidationService(builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo),
+		jobRepo:               jobRepo,
+		jobLicenseRepo:        jobLicenseRepo,
+		jobSkillRepo:          jobSkillRepo,
+		jobJobRequirementRepo: jobJobRequirementRepo,
+		jobRequirementRepo:    jobRequirementRepo,
+		builderRepo:           builderRepo,
+		jobsiteRepo:           jobsiteRepo,
+		jobTypeRepo:           jobTypeRepo,
+		jobApplicationRepo:    jobApplicationRepo,
+		jobAssignmentRepo:     jobAssignmentRepo,
+		licenseRepo:           licenseRepo,
+		validator:             NewJobValidationService(builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo),
 	}
 }
 
@@ -153,6 +165,17 @@ func (u *jobUsecase) CreateJob(ctx context.Context, req payload.CreateJobRequest
 		}
 		if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
 			return nil, fmt.Errorf("failed to create job skill subcategory relationship: %w", err)
+		}
+	}
+
+	// Create job requirement relationships
+	for _, jobRequirementID := range req.JobRequirementIDs {
+		jobJobRequirement := &models.JobJobRequirement{
+			JobID:            job.ID,
+			JobRequirementID: jobRequirementID,
+		}
+		if err := u.jobJobRequirementRepo.Create(ctx, jobJobRequirement); err != nil {
+			return nil, fmt.Errorf("failed to create job requirement relationship: %w", err)
 		}
 	}
 
@@ -616,8 +639,24 @@ func (u *jobUsecase) GetLabourJobDetail(ctx context.Context, jobID uuid.UUID, la
 		return nil, fmt.Errorf("failed to get job: %w", err)
 	}
 
-	// Convert job to response
-	jobResp := u.convertToJobResponse(job)
+	// Get additional relation data
+	builderProfile, err := u.builderRepo.GetByID(ctx, job.BuilderProfileID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get builder profile: %w", err)
+	}
+
+	jobsite, err := u.jobsiteRepo.GetByID(ctx, job.JobsiteID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get jobsite: %w", err)
+	}
+
+	jobType, err := u.jobTypeRepo.GetByID(ctx, job.JobTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get job type: %w", err)
+	}
+
+	// Convert job to response with additional data
+	jobResp := u.convertToJobResponseWithRelations(ctx, job, builderProfile, jobsite, jobType)
 
 	// Check if user has applied to this job
 	application, err := u.jobApplicationRepo.GetByJobAndLabourUser(ctx, jobID, labourUserID)
@@ -648,13 +687,10 @@ func (u *jobUsecase) GetLabourJobDetail(ctx context.Context, jobID uuid.UUID, la
 	return response, nil
 }
 
-// convertToJobResponse converts a Job model to JobResponse
-func (u *jobUsecase) convertToJobResponse(job *models.Job) payload.JobResponse {
+// convertToJobResponseWithRelations converts a Job model to JobResponse with full relations
+func (u *jobUsecase) convertToJobResponseWithRelations(ctx context.Context, job *models.Job, builderProfile *builder_models.BuilderProfile, jobsite *jobsite_models.Jobsite, jobType *job_type_models.JobType) payload.JobResponse {
 	jobResp := payload.JobResponse{
 		ID:                          job.ID,
-		BuilderProfileID:            job.BuilderProfileID,
-		JobsiteID:                   job.JobsiteID,
-		JobTypeID:                   job.JobTypeID,
 		ManyLabours:                 job.ManyLabours,
 		OngoingWork:                 job.OngoingWork,
 		WageSiteAllowance:           job.WageSiteAllowance,
@@ -680,12 +716,159 @@ func (u *jobUsecase) convertToJobResponse(job *models.Job) payload.JobResponse {
 		UpdatedAt:                   job.UpdatedAt,
 	}
 
-	// Convert job licenses (basic info only)
+	// Add builder profile information
+	if builderProfile != nil {
+		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
+			ID:          builderProfile.ID,
+			CompanyName: getStringValue(builderProfile.CompanyName),
+			DisplayName: builderProfile.DisplayName,
+			Location:    builderProfile.Location,
+			Phone:       nil, // Not available in BuilderProfile model
+			Email:       nil, // Not available in BuilderProfile model
+			CreatedAt:   builderProfile.CreatedAt,
+			UpdatedAt:   builderProfile.UpdatedAt,
+		}
+	}
+
+	// Add jobsite information
+	if jobsite != nil {
+		jobResp.Jobsite = &payload.JobsiteResponse{
+			ID:          jobsite.ID,
+			Name:        getStringValue(jobsite.Description), // Use description as name
+			Address:     jobsite.Address,
+			City:        jobsite.City,
+			Suburb:      jobsite.Suburb,
+			Description: jobsite.Description,
+			Latitude:    jobsite.Latitude,
+			Longitude:   jobsite.Longitude,
+			Phone:       jobsite.Phone,
+			CreatedAt:   jobsite.CreatedAt,
+			UpdatedAt:   jobsite.UpdatedAt,
+		}
+		log.Printf("🔍 convertToJobResponseWithRelations - Jobsite added: %+v", jobResp.Jobsite)
+	} else {
+		log.Printf("🚫 convertToJobResponseWithRelations - Jobsite is nil")
+	}
+
+	// Add job type information
+	if jobType != nil {
+		jobResp.JobType = &payload.JobTypeResponse{
+			ID:          jobType.ID,
+			Name:        jobType.Name,
+			Description: jobType.Description,
+			CreatedAt:   jobType.CreatedAt,
+			UpdatedAt:   jobType.UpdatedAt,
+		}
+		log.Printf("🔍 convertToJobResponseWithRelations - Job Type added: %+v", jobResp.JobType)
+	} else {
+		log.Printf("🚫 convertToJobResponseWithRelations - Job Type is nil")
+	}
+
+	// Convert job licenses with full details
 	for _, jobLicense := range job.JobLicenses {
+		// Get license details
+		licenseDetails, err := u.licenseRepo.GetByID(ctx, jobLicense.LicenseID)
+		if err != nil {
+			log.Printf("🚫 Failed to get license details for ID %s: %v", jobLicense.LicenseID, err)
+			continue
+		}
+
 		jobLicenseResp := payload.JobLicenseResponse{
 			ID:        jobLicense.ID,
 			JobID:     jobLicense.JobID,
 			LicenseID: jobLicense.LicenseID,
+			License: &payload.LicenseResponse{
+				ID:          licenseDetails.ID,
+				Name:        licenseDetails.Name,
+				Description: &licenseDetails.Description,
+			},
+			CreatedAt: jobLicense.CreatedAt,
+		}
+		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
+	}
+
+	// Convert job skills (basic info only)
+	for _, jobSkill := range job.JobSkills {
+		jobSkillResp := payload.JobSkillResponse{
+			ID:                 jobSkill.ID,
+			JobID:              jobSkill.JobID,
+			SkillCategoryID:    jobSkill.SkillCategoryID,
+			SkillSubcategoryID: jobSkill.SkillSubcategoryID,
+			CreatedAt:          jobSkill.CreatedAt,
+		}
+		jobResp.JobSkills = append(jobResp.JobSkills, jobSkillResp)
+	}
+
+	// Convert job requirements with full details
+	for _, jobRequirement := range job.JobRequirements {
+		// Get job requirement details
+		requirementDetails, err := u.jobRequirementRepo.GetByID(ctx, jobRequirement.JobRequirementID)
+		if err != nil {
+			log.Printf("🚫 Failed to get job requirement details for ID %s: %v", jobRequirement.JobRequirementID, err)
+			continue
+		}
+
+		jobRequirementResp := payload.JobRequirementResponse{
+			ID:          requirementDetails.ID,
+			Name:        requirementDetails.Name,
+			Description: requirementDetails.Description,
+			IsActive:    requirementDetails.IsActive,
+			CreatedAt:   requirementDetails.CreatedAt,
+			UpdatedAt:   requirementDetails.UpdatedAt,
+		}
+		jobResp.JobRequirements = append(jobResp.JobRequirements, jobRequirementResp)
+	}
+
+	return jobResp
+}
+
+// convertToJobResponse converts a Job model to JobResponse
+func (u *jobUsecase) convertToJobResponse(ctx context.Context, job *models.Job) payload.JobResponse {
+	jobResp := payload.JobResponse{
+		ID:                          job.ID,
+		ManyLabours:                 job.ManyLabours,
+		OngoingWork:                 job.OngoingWork,
+		WageSiteAllowance:           job.WageSiteAllowance,
+		WageLeadingHandAllowance:    job.WageLeadingHandAllowance,
+		WageProductivityAllowance:   job.WageProductivityAllowance,
+		ExtrasOvertimeRate:          job.ExtrasOvertimeRate,
+		WageHourlyRate:              job.WageHourlyRate,
+		TravelAllowance:             job.TravelAllowance,
+		GST:                         job.GST,
+		StartDateWork:               job.StartDateWork,
+		EndDateWork:                 job.EndDateWork,
+		WorkSaturday:                job.WorkSaturday,
+		WorkSunday:                  job.WorkSunday,
+		StartTime:                   job.StartTime,
+		EndTime:                     job.EndTime,
+		Description:                 job.Description,
+		PaymentDay:                  job.PaymentDay,
+		RequiresSupervisorSignature: job.RequiresSupervisorSignature,
+		SupervisorName:              job.SupervisorName,
+		Visibility:                  job.Visibility,
+		PaymentType:                 job.PaymentType,
+		CreatedAt:                   job.CreatedAt,
+		UpdatedAt:                   job.UpdatedAt,
+	}
+
+	// Convert job licenses with full details
+	for _, jobLicense := range job.JobLicenses {
+		// Get license details
+		licenseDetails, err := u.licenseRepo.GetByID(ctx, jobLicense.LicenseID)
+		if err != nil {
+			log.Printf("🚫 Failed to get license details for ID %s: %v", jobLicense.LicenseID, err)
+			continue
+		}
+
+		jobLicenseResp := payload.JobLicenseResponse{
+			ID:        jobLicense.ID,
+			JobID:     jobLicense.JobID,
+			LicenseID: jobLicense.LicenseID,
+			License: &payload.LicenseResponse{
+				ID:          licenseDetails.ID,
+				Name:        licenseDetails.Name,
+				Description: &licenseDetails.Description,
+			},
 			CreatedAt: jobLicense.CreatedAt,
 		}
 		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
@@ -708,6 +891,8 @@ func (u *jobUsecase) convertToJobResponse(job *models.Job) payload.JobResponse {
 
 // GetBuilderJobDetail retrieves a job detail for a builder (only their own jobs)
 func (u *jobUsecase) GetBuilderJobDetail(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID) (*payload.GetJobResponse, error) {
+	log.Printf("🔍 GetBuilderJobDetail - Starting with Job ID: %s, Builder Profile ID: %s", jobID, builderProfileID)
+
 	// Get job with all relations
 	job, err := u.jobRepo.GetWithRelations(ctx, jobID)
 	if err != nil {
@@ -719,8 +904,33 @@ func (u *jobUsecase) GetBuilderJobDetail(ctx context.Context, jobID uuid.UUID, b
 		return nil, fmt.Errorf("invalid job - not owned by builder")
 	}
 
-	// Convert job to response
-	jobResp := u.convertToJobResponse(job)
+	// Get additional relation data
+	builderProfile, err := u.builderRepo.GetByID(ctx, job.BuilderProfileID)
+	if err != nil {
+		log.Printf("🚫 GetBuilderJobDetail - Failed to get builder profile: %v", err)
+		return nil, fmt.Errorf("failed to get builder profile: %w", err)
+	}
+	log.Printf("🔍 GetBuilderJobDetail - Builder Profile: %+v", builderProfile)
+
+	jobsite, err := u.jobsiteRepo.GetByID(ctx, job.JobsiteID)
+	if err != nil {
+		log.Printf("🚫 GetBuilderJobDetail - Failed to get jobsite: %v", err)
+		return nil, fmt.Errorf("failed to get jobsite: %w", err)
+	}
+	log.Printf("🔍 GetBuilderJobDetail - Jobsite: %+v", jobsite)
+
+	jobType, err := u.jobTypeRepo.GetByID(ctx, job.JobTypeID)
+	if err != nil {
+		log.Printf("🚫 GetBuilderJobDetail - Failed to get job type: %v", err)
+		return nil, fmt.Errorf("failed to get job type: %w", err)
+	}
+	log.Printf("🔍 GetBuilderJobDetail - Job Type: %+v", jobType)
+
+	// Convert job to response with additional data
+	jobResp := u.convertToJobResponseWithRelations(ctx, job, builderProfile, jobsite, jobType)
+	log.Printf("🔍 GetBuilderJobDetail - Job Response: %+v", jobResp)
+	log.Printf("🔍 GetBuilderJobDetail - Jobsite in response: %+v", jobResp.Jobsite)
+	log.Printf("🔍 GetBuilderJobDetail - JobType in response: %+v", jobResp.JobType)
 
 	response := &payload.GetJobResponse{
 		Job:     jobResp,
@@ -757,7 +967,7 @@ func (u *jobUsecase) UpdateJobVisibility(ctx context.Context, jobID uuid.UUID, b
 	}
 
 	// Convert job to response
-	jobResp := u.convertToJobResponse(job)
+	jobResp := u.convertToJobResponse(ctx, job)
 
 	response := &payload.UpdateJobVisibilityResponse{
 		Job:     jobResp,

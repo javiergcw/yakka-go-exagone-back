@@ -10,9 +10,6 @@ import (
 // JobResponse represents a job in API responses
 type JobResponse struct {
 	ID                          uuid.UUID            `json:"id"`
-	BuilderProfileID            uuid.UUID            `json:"builder_profile_id"`
-	JobsiteID                   uuid.UUID            `json:"jobsite_id"`
-	JobTypeID                   uuid.UUID            `json:"job_type_id"`
 	ManyLabours                 int                  `json:"many_labours"`
 	OngoingWork                 bool                 `json:"ongoing_work"`
 	WageSiteAllowance           *float64             `json:"wage_site_allowance"`
@@ -38,33 +35,48 @@ type JobResponse struct {
 	UpdatedAt                   time.Time            `json:"updated_at"`
 
 	// Relations
-	BuilderProfile *BuilderProfileResponse `json:"builder_profile,omitempty"`
-	Jobsite        *JobsiteResponse        `json:"jobsite,omitempty"`
-	JobType        *JobTypeResponse        `json:"job_type,omitempty"`
-	JobLicenses    []JobLicenseResponse    `json:"job_licenses,omitempty"`
-	JobSkills      []JobSkillResponse      `json:"job_skills,omitempty"`
+	BuilderProfile  *BuilderProfileResponse  `json:"builder_profile,omitempty"`
+	Jobsite         *JobsiteResponse         `json:"jobsite"`
+	JobType         *JobTypeResponse         `json:"job_type"`
+	JobLicenses     []JobLicenseResponse     `json:"job_licenses"`
+	JobSkills       []JobSkillResponse       `json:"job_skills"`
+	JobRequirements []JobRequirementResponse `json:"job_requirements"`
 }
 
 // BuilderProfileResponse represents a builder profile in responses
 type BuilderProfileResponse struct {
 	ID          uuid.UUID `json:"id"`
 	CompanyName string    `json:"company_name"`
-	// Add other builder profile fields as needed
+	DisplayName *string   `json:"display_name,omitempty"`
+	Location    *string   `json:"location,omitempty"`
+	Phone       *string   `json:"phone,omitempty"`
+	Email       *string   `json:"email,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // JobsiteResponse represents a jobsite in responses
 type JobsiteResponse struct {
-	ID      uuid.UUID `json:"id"`
-	Name    string    `json:"name"`
-	Address string    `json:"address"`
-	// Add other jobsite fields as needed
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Address     string    `json:"address"`
+	City        *string   `json:"city,omitempty"`
+	Suburb      *string   `json:"suburb,omitempty"`
+	Description *string   `json:"description,omitempty"`
+	Latitude    float64   `json:"latitude"`
+	Longitude   float64   `json:"longitude"`
+	Phone       *string   `json:"phone,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // JobTypeResponse represents a job type in responses
 type JobTypeResponse struct {
 	ID          uuid.UUID `json:"id"`
 	Name        string    `json:"name"`
-	Description *string   `json:"description"`
+	Description *string   `json:"description,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 // JobLicenseResponse represents a job license in responses
@@ -160,4 +172,14 @@ type JobApplicationInfo struct {
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 	WithdrawnAt  *time.Time `json:"withdrawn_at,omitempty"`
+}
+
+// JobRequirementResponse represents a job requirement in responses
+type JobRequirementResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description *string   `json:"description,omitempty"`
+	IsActive    bool      `json:"is_active"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

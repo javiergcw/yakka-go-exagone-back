@@ -91,6 +91,7 @@ func (r *jobRepository) GetWithRelations(ctx context.Context, id uuid.UUID) (*mo
 	err := r.db.WithContext(ctx).
 		Preload("JobLicenses").
 		Preload("JobSkills").
+		Preload("JobRequirements").
 		Where("id = ?", id).
 		First(&job).Error
 	if err != nil {

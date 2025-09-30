@@ -95,6 +95,7 @@ func main() {
 	jobRepo := job_db.NewJobRepository(database.DB)
 	jobLicenseRepo := job_db.NewJobLicenseRepository(database.DB)
 	jobSkillRepo := job_db.NewJobSkillRepository(database.DB)
+	jobJobRequirementRepo := job_db.NewJobJobRequirementRepository(database.DB)
 
 	// Job Application repositories
 	jobApplicationRepo := job_application_db.NewJobApplicationRepository(database.DB)
@@ -108,7 +109,7 @@ func main() {
 	paymentConstantUseCase := payment_constant_usecase.NewPaymentConstantUsecase(paymentConstantRepo)
 	// jobApplicationUseCase := job_application_usecase.NewJobApplicationUsecase(jobApplicationRepo) // Available for future use
 	// jobAssignmentUseCase := job_assignment_usecase.NewJobAssignmentUsecase(jobAssignmentRepo) // Available for future use
-	jobUseCase := job_usecase.NewJobUsecase(jobRepo, jobLicenseRepo, jobSkillRepo, builderRepo, jobsiteRepo, jobTypeRepo, jobApplicationRepo, jobAssignmentRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo)
+	jobUseCase := job_usecase.NewJobUsecase(jobRepo, jobLicenseRepo, jobSkillRepo, jobJobRequirementRepo, jobRequirementRepo, builderRepo, jobsiteRepo, jobTypeRepo, jobApplicationRepo, jobAssignmentRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)

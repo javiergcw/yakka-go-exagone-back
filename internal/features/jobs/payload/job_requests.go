@@ -19,7 +19,7 @@ type CreateJobRequest struct {
 	WageProductivityAllowance   *float64             `json:"wage_productivity_allowance"`
 	ExtrasOvertimeRate          *float64             `json:"extras_overtime_rate"`
 	WageHourlyRate              *float64             `json:"wage_hourly_rate"`
-	TravelAllowance            *float64             `json:"travel_allowance"`
+	TravelAllowance             *float64             `json:"travel_allowance"`
 	GST                         *float64             `json:"gst"`
 	StartDateWork               *time.Time           `json:"start_date_work"`
 	EndDateWork                 *time.Time           `json:"end_date_work"`
@@ -36,6 +36,7 @@ type CreateJobRequest struct {
 	LicenseIDs                  []uuid.UUID          `json:"license_ids"`
 	SkillCategoryIDs            []uuid.UUID          `json:"skill_category_ids"`
 	SkillSubcategoryIDs         []uuid.UUID          `json:"skill_subcategory_ids"`
+	JobRequirementIDs           []uuid.UUID          `json:"job_requirement_ids"`
 }
 
 // UpdateJobVisibilityRequest represents the request to update job visibility
@@ -52,7 +53,7 @@ type UpdateJobRequest struct {
 	WageProductivityAllowance   *float64              `json:"wage_productivity_allowance"`
 	ExtrasOvertimeRate          *float64              `json:"extras_overtime_rate"`
 	WageHourlyRate              *float64              `json:"wage_hourly_rate"`
-	TravelAllowance            *float64              `json:"travel_allowance"`
+	TravelAllowance             *float64              `json:"travel_allowance"`
 	GST                         *float64              `json:"gst"`
 	StartDateWork               *time.Time            `json:"start_date_work"`
 	EndDateWork                 *time.Time            `json:"end_date_work"`
@@ -69,6 +70,7 @@ type UpdateJobRequest struct {
 	LicenseIDs                  []uuid.UUID           `json:"license_ids"`
 	SkillCategoryIDs            []uuid.UUID           `json:"skill_category_ids"`
 	SkillSubcategoryIDs         []uuid.UUID           `json:"skill_subcategory_ids"`
+	JobRequirementIDs           []uuid.UUID           `json:"job_requirement_ids"`
 }
 
 // GetJobsByBuilderRequest represents the request to get jobs by builder

@@ -40,8 +40,9 @@ type Job struct {
 	// BuilderProfile *BuilderProfile `json:"builder_profile,omitempty" gorm:"foreignKey:BuilderProfileID"`
 	// Jobsite        *Jobsite        `json:"jobsite,omitempty" gorm:"foreignKey:JobsiteID"`
 	// JobType        *JobType        `json:"job_type,omitempty" gorm:"foreignKey:JobTypeID"`
-	JobLicenses []JobLicense `json:"job_licenses,omitempty" gorm:"foreignKey:JobID"`
-	JobSkills   []JobSkill   `json:"job_skills,omitempty" gorm:"foreignKey:JobID"`
+	JobLicenses     []JobLicense        `json:"job_licenses,omitempty" gorm:"foreignKey:JobID"`
+	JobSkills       []JobSkill          `json:"job_skills,omitempty" gorm:"foreignKey:JobID"`
+	JobRequirements []JobJobRequirement `json:"job_requirements,omitempty" gorm:"foreignKey:JobID"`
 }
 
 // TableName returns the table name for the Job model
@@ -83,4 +84,21 @@ type JobSkill struct {
 // TableName returns the table name for the JobSkill model
 func (JobSkill) TableName() string {
 	return "job_skills"
+}
+
+// JobJobRequirement represents the many-to-many relationship between jobs and job requirements
+type JobJobRequirement struct {
+	ID               uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	JobID            uuid.UUID `json:"job_id" gorm:"type:uuid;not null"`
+	JobRequirementID uuid.UUID `json:"job_requirement_id" gorm:"type:uuid;not null"`
+	CreatedAt        time.Time `json:"created_at" gorm:"not null;type:timestamptz"`
+
+	// Relations - loaded separately to avoid circular imports
+	// Job            *Job            `json:"job,omitempty" gorm:"foreignKey:JobID"`
+	// JobRequirement *JobRequirement `json:"job_requirement,omitempty" gorm:"foreignKey:JobRequirementID"`
+}
+
+// TableName returns the table name for the JobJobRequirement model
+func (JobJobRequirement) TableName() string {
+	return "job_job_requirements"
 }

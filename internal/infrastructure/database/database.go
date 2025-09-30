@@ -124,6 +124,7 @@ func Migrate() error {
 		&jobModels.Job{},
 		&jobModels.JobLicense{},
 		&jobModels.JobSkill{},
+		&jobModels.JobJobRequirement{},
 
 		// Job Application models
 		&jobApplicationModels.JobApplication{},
