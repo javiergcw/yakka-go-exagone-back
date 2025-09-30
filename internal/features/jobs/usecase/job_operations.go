@@ -145,26 +145,41 @@ func (u *jobUsecase) CreateJob(ctx context.Context, req payload.CreateJobRequest
 		}
 	}
 
-	// Create job skill relationships - one record per skill
-	// Create records for skill categories only (without subcategories)
-	for _, skillCategoryID := range req.SkillCategoryIDs {
-		jobSkill := &models.JobSkill{
-			JobID:           job.ID,
-			SkillCategoryID: &skillCategoryID,
+	// Create job skill relationships
+	// Handle new format: JobSkills with category and subcategory together
+	if len(req.JobSkills) > 0 {
+		for _, jobSkillReq := range req.JobSkills {
+			jobSkill := &models.JobSkill{
+				JobID:              job.ID,
+				SkillCategoryID:    jobSkillReq.SkillCategoryID,
+				SkillSubcategoryID: jobSkillReq.SkillSubcategoryID,
+			}
+			if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
+				return nil, fmt.Errorf("failed to create job skill relationship: %w", err)
+			}
 		}
-		if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
-			return nil, fmt.Errorf("failed to create job skill category relationship: %w", err)
+	} else {
+		// Handle legacy format: separate arrays for backward compatibility
+		// Create records for skill categories only (without subcategories)
+		for _, skillCategoryID := range req.SkillCategoryIDs {
+			jobSkill := &models.JobSkill{
+				JobID:           job.ID,
+				SkillCategoryID: &skillCategoryID,
+			}
+			if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
+				return nil, fmt.Errorf("failed to create job skill category relationship: %w", err)
+			}
 		}
-	}
 
-	// Create records for skill subcategories only (without categories)
-	for _, skillSubcategoryID := range req.SkillSubcategoryIDs {
-		jobSkill := &models.JobSkill{
-			JobID:              job.ID,
-			SkillSubcategoryID: &skillSubcategoryID,
-		}
-		if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
-			return nil, fmt.Errorf("failed to create job skill subcategory relationship: %w", err)
+		// Create records for skill subcategories only (without categories)
+		for _, skillSubcategoryID := range req.SkillSubcategoryIDs {
+			jobSkill := &models.JobSkill{
+				JobID:              job.ID,
+				SkillSubcategoryID: &skillSubcategoryID,
+			}
+			if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
+				return nil, fmt.Errorf("failed to create job skill subcategory relationship: %w", err)
+			}
 		}
 	}
 
@@ -787,7 +802,7 @@ func (u *jobUsecase) convertToJobResponseWithRelations(ctx context.Context, job 
 		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
 	}
 
-	// Convert job skills (basic info only)
+	// Convert job skills with full details
 	for _, jobSkill := range job.JobSkills {
 		jobSkillResp := payload.JobSkillResponse{
 			ID:                 jobSkill.ID,
@@ -796,6 +811,35 @@ func (u *jobUsecase) convertToJobResponseWithRelations(ctx context.Context, job 
 			SkillSubcategoryID: jobSkill.SkillSubcategoryID,
 			CreatedAt:          jobSkill.CreatedAt,
 		}
+
+		// Get skill category details if available
+		if jobSkill.SkillCategoryID != nil {
+			skillCategory, err := u.validator.skillCategoryRepo.GetByID(ctx, *jobSkill.SkillCategoryID)
+			if err != nil {
+				log.Printf("🚫 Failed to get skill category details for ID %s: %v", *jobSkill.SkillCategoryID, err)
+			} else {
+				jobSkillResp.SkillCategory = &payload.SkillCategoryResponse{
+					ID:          skillCategory.ID,
+					Name:        skillCategory.Name,
+					Description: &skillCategory.Description,
+				}
+			}
+		}
+
+		// Get skill subcategory details if available
+		if jobSkill.SkillSubcategoryID != nil {
+			skillSubcategory, err := u.validator.skillSubcategoryRepo.GetByID(ctx, *jobSkill.SkillSubcategoryID)
+			if err != nil {
+				log.Printf("🚫 Failed to get skill subcategory details for ID %s: %v", *jobSkill.SkillSubcategoryID, err)
+			} else {
+				jobSkillResp.SkillSubcategory = &payload.SkillSubcategoryResponse{
+					ID:          skillSubcategory.ID,
+					Name:        skillSubcategory.Name,
+					Description: &skillSubcategory.Description,
+				}
+			}
+		}
+
 		jobResp.JobSkills = append(jobResp.JobSkills, jobSkillResp)
 	}
 

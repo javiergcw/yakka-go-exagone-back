@@ -36,6 +36,7 @@ type CreateJobRequest struct {
 	LicenseIDs                  []uuid.UUID          `json:"license_ids"`
 	SkillCategoryIDs            []uuid.UUID          `json:"skill_category_ids"`
 	SkillSubcategoryIDs         []uuid.UUID          `json:"skill_subcategory_ids"`
+	JobSkills                   []JobSkillRequest    `json:"job_skills,omitempty"`
 	JobRequirementIDs           []uuid.UUID          `json:"job_requirement_ids"`
 }
 
@@ -83,4 +84,10 @@ type GetJobsByBuilderRequest struct {
 type GetJobsByJobsiteRequest struct {
 	JobsiteID  uuid.UUID             `json:"jobsite_id" validate:"required"`
 	Visibility *models.JobVisibility `json:"visibility"`
+}
+
+// JobSkillRequest represents a job skill with category and subcategory
+type JobSkillRequest struct {
+	SkillCategoryID    *uuid.UUID `json:"skill_category_id,omitempty"`
+	SkillSubcategoryID *uuid.UUID `json:"skill_subcategory_id,omitempty"`
 }

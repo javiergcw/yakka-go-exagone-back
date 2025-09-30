@@ -88,6 +88,24 @@ func (v *JobValidationService) ValidateCreateJobRequest(ctx context.Context, req
 		}
 	}
 
+	// Validate job skills (new format with category and subcategory together)
+	for _, jobSkill := range req.JobSkills {
+		if jobSkill.SkillCategoryID != nil {
+			if err := v.validateSkillCategory(ctx, *jobSkill.SkillCategoryID); err != nil {
+				return fmt.Errorf("invalid skill category ID %s in job skills: %w", *jobSkill.SkillCategoryID, err)
+			}
+		}
+		if jobSkill.SkillSubcategoryID != nil {
+			if err := v.validateSkillSubcategory(ctx, *jobSkill.SkillSubcategoryID); err != nil {
+				return fmt.Errorf("invalid skill subcategory ID %s in job skills: %w", *jobSkill.SkillSubcategoryID, err)
+			}
+		}
+		// At least one of category or subcategory must be provided
+		if jobSkill.SkillCategoryID == nil && jobSkill.SkillSubcategoryID == nil {
+			return fmt.Errorf("job skill must have either skill_category_id or skill_subcategory_id")
+		}
+	}
+
 	// Validate job requirements exist
 	for _, jobRequirementID := range req.JobRequirementIDs {
 		if err := v.validateJobRequirement(ctx, jobRequirementID); err != nil {

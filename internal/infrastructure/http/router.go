@@ -24,6 +24,7 @@ import (
 	payment_constant_rest "github.com/yakka-backend/internal/features/masters/payment_constants/delivery/rest"
 	payment_constant_usecase "github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_category_rest "github.com/yakka-backend/internal/features/masters/skills/delivery/rest"
+	skill_category_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 )
@@ -64,6 +65,8 @@ func NewRouter(
 	licenseRepo license_db.LicenseRepository,
 	paymentConstantUseCase payment_constant_usecase.PaymentConstantUsecase,
 	jobRequirementRepo job_requirement_db.JobRequirementRepository,
+	skillCategoryRepo skill_category_db.SkillCategoryRepository,
+	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository,
 ) *Router {
 	return &Router{
 		authHandler:             authHandler,
@@ -73,7 +76,7 @@ func NewRouter(
 		labourProfileHandler:    labourProfileHandler,
 		builderProfileHandler:   builderProfileHandler,
 		jobsiteHandler:          jobsiteHandler,
-		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo, jobsiteRepo, jobTypeRepo, licenseRepo, jobRequirementRepo),
+		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo, jobsiteRepo, jobTypeRepo, licenseRepo, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo),
 		licenseHandler:          license_rest.NewLicenseHandler(),
 		experienceLevelHandler:  experience_level_rest.NewExperienceLevelHandler(),
 		skillCategoryHandler:    skill_category_rest.NewSkillCategoryHandler(),

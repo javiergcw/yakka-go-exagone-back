@@ -19,28 +19,33 @@ import (
 	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	job_type_models "github.com/yakka-backend/internal/features/masters/job_types/models"
 	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
+	skill_category_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 	"github.com/yakka-backend/internal/shared/validation"
 )
 
 type JobHandler struct {
-	jobUsecase         usecase.JobUsecase
-	builderProfileRepo builder_db.BuilderProfileRepository
-	jobsiteRepo        jobsite_db.JobsiteRepository
-	jobTypeRepo        job_type_db.JobTypeRepository
-	licenseRepo        license_db.LicenseRepository
-	jobRequirementRepo job_requirement_db.JobRequirementRepository
+	jobUsecase           usecase.JobUsecase
+	builderProfileRepo   builder_db.BuilderProfileRepository
+	jobsiteRepo          jobsite_db.JobsiteRepository
+	jobTypeRepo          job_type_db.JobTypeRepository
+	licenseRepo          license_db.LicenseRepository
+	jobRequirementRepo   job_requirement_db.JobRequirementRepository
+	skillCategoryRepo    skill_category_db.SkillCategoryRepository
+	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository
 }
 
-func NewJobHandler(jobUsecase usecase.JobUsecase, builderProfileRepo builder_db.BuilderProfileRepository, jobsiteRepo jobsite_db.JobsiteRepository, jobTypeRepo job_type_db.JobTypeRepository, licenseRepo license_db.LicenseRepository, jobRequirementRepo job_requirement_db.JobRequirementRepository) *JobHandler {
+func NewJobHandler(jobUsecase usecase.JobUsecase, builderProfileRepo builder_db.BuilderProfileRepository, jobsiteRepo jobsite_db.JobsiteRepository, jobTypeRepo job_type_db.JobTypeRepository, licenseRepo license_db.LicenseRepository, jobRequirementRepo job_requirement_db.JobRequirementRepository, skillCategoryRepo skill_category_db.SkillCategoryRepository, skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository) *JobHandler {
 	return &JobHandler{
-		jobUsecase:         jobUsecase,
-		builderProfileRepo: builderProfileRepo,
-		jobsiteRepo:        jobsiteRepo,
-		jobTypeRepo:        jobTypeRepo,
-		licenseRepo:        licenseRepo,
-		jobRequirementRepo: jobRequirementRepo,
+		jobUsecase:           jobUsecase,
+		builderProfileRepo:   builderProfileRepo,
+		jobsiteRepo:          jobsiteRepo,
+		jobTypeRepo:          jobTypeRepo,
+		licenseRepo:          licenseRepo,
+		jobRequirementRepo:   jobRequirementRepo,
+		skillCategoryRepo:    skillCategoryRepo,
+		skillSubcategoryRepo: skillSubcategoryRepo,
 	}
 }
 
@@ -906,7 +911,7 @@ func (h *JobHandler) convertToJobResponseWithRelations(ctx context.Context, job 
 		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
 	}
 
-	// Convert job skills (basic info only)
+	// Convert job skills with full details
 	for _, jobSkill := range job.JobSkills {
 		jobSkillResp := payload.JobSkillResponse{
 			ID:                 jobSkill.ID,
@@ -915,6 +920,35 @@ func (h *JobHandler) convertToJobResponseWithRelations(ctx context.Context, job 
 			SkillSubcategoryID: jobSkill.SkillSubcategoryID,
 			CreatedAt:          jobSkill.CreatedAt,
 		}
+
+		// Get skill category details if available
+		if jobSkill.SkillCategoryID != nil {
+			skillCategory, err := h.skillCategoryRepo.GetByID(ctx, *jobSkill.SkillCategoryID)
+			if err != nil {
+				log.Printf("🚫 Failed to get skill category details for ID %s: %v", *jobSkill.SkillCategoryID, err)
+			} else {
+				jobSkillResp.SkillCategory = &payload.SkillCategoryResponse{
+					ID:          skillCategory.ID,
+					Name:        skillCategory.Name,
+					Description: &skillCategory.Description,
+				}
+			}
+		}
+
+		// Get skill subcategory details if available
+		if jobSkill.SkillSubcategoryID != nil {
+			skillSubcategory, err := h.skillSubcategoryRepo.GetByID(ctx, *jobSkill.SkillSubcategoryID)
+			if err != nil {
+				log.Printf("🚫 Failed to get skill subcategory details for ID %s: %v", *jobSkill.SkillSubcategoryID, err)
+			} else {
+				jobSkillResp.SkillSubcategory = &payload.SkillSubcategoryResponse{
+					ID:          skillSubcategory.ID,
+					Name:        skillSubcategory.Name,
+					Description: &skillSubcategory.Description,
+				}
+			}
+		}
+
 		jobResp.JobSkills = append(jobResp.JobSkills, jobSkillResp)
 	}
 
