@@ -28,7 +28,7 @@ type CreateJobRequest struct {
 	StartTime                   *string              `json:"start_time"`
 	EndTime                     *string              `json:"end_time"`
 	Description                 *string              `json:"description"`
-	PaymentDay                  *int                 `json:"payment_day"`
+	PaymentDay                  *time.Time           `json:"payment_day"`
 	RequiresSupervisorSignature bool                 `json:"requires_supervisor_signature"`
 	SupervisorName              *string              `json:"supervisor_name"`
 	Visibility                  models.JobVisibility `json:"visibility"`
@@ -63,7 +63,7 @@ type UpdateJobRequest struct {
 	StartTime                   *string               `json:"start_time"`
 	EndTime                     *string               `json:"end_time"`
 	Description                 *string               `json:"description"`
-	PaymentDay                  *int                  `json:"payment_day"`
+	PaymentDay                  *time.Time            `json:"payment_day"`
 	RequiresSupervisorSignature *bool                 `json:"requires_supervisor_signature"`
 	SupervisorName              *string               `json:"supervisor_name"`
 	Visibility                  *models.JobVisibility `json:"visibility"`

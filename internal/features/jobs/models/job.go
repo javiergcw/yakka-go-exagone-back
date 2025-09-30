@@ -28,7 +28,7 @@ type Job struct {
 	StartTime                   *string       `json:"start_time" gorm:"size:8"` // Format: "HH:MM:SS"
 	EndTime                     *string       `json:"end_time" gorm:"size:8"`   // Format: "HH:MM:SS"
 	Description                 *string       `json:"description" gorm:"type:text"`
-	PaymentDay                  *int          `json:"payment_day" gorm:"type:smallint"` // Day of month for FIXED_DAY
+	PaymentDay                  *time.Time    `json:"payment_day" gorm:"type:date"` // Payment date
 	RequiresSupervisorSignature bool          `json:"requires_supervisor_signature" gorm:"not null;default:false"`
 	SupervisorName              *string       `json:"supervisor_name" gorm:"size:100"`
 	Visibility                  JobVisibility `json:"visibility" gorm:"type:varchar(20);not null;default:'DRAFT'"`

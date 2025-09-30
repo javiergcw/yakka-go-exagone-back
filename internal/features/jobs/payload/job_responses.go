@@ -12,35 +12,36 @@ type JobResponse struct {
 	ID                          uuid.UUID            `json:"id"`
 	ManyLabours                 int                  `json:"many_labours"`
 	OngoingWork                 bool                 `json:"ongoing_work"`
-	WageSiteAllowance           *float64             `json:"wage_site_allowance"`
-	WageLeadingHandAllowance    *float64             `json:"wage_leading_hand_allowance"`
-	WageProductivityAllowance   *float64             `json:"wage_productivity_allowance"`
-	ExtrasOvertimeRate          *float64             `json:"extras_overtime_rate"`
-	WageHourlyRate              *float64             `json:"wage_hourly_rate"`
-	TravelAllowance             *float64             `json:"travel_allowance"`
-	GST                         *float64             `json:"gst"`
-	StartDateWork               *time.Time           `json:"start_date_work"`
-	EndDateWork                 *time.Time           `json:"end_date_work"`
+	WageSiteAllowance           *float64             `json:"wage_site_allowance,omitempty"`
+	WageLeadingHandAllowance    *float64             `json:"wage_leading_hand_allowance,omitempty"`
+	WageProductivityAllowance   *float64             `json:"wage_productivity_allowance,omitempty"`
+	ExtrasOvertimeRate          *float64             `json:"extras_overtime_rate,omitempty"`
+	WageHourlyRate              *float64             `json:"wage_hourly_rate,omitempty"`
+	TravelAllowance             *float64             `json:"travel_allowance,omitempty"`
+	GST                         *float64             `json:"gst,omitempty"`
+	StartDateWork               *time.Time           `json:"start_date_work,omitempty"`
+	EndDateWork                 *time.Time           `json:"end_date_work,omitempty"`
 	WorkSaturday                bool                 `json:"work_saturday"`
 	WorkSunday                  bool                 `json:"work_sunday"`
-	StartTime                   *string              `json:"start_time"`
-	EndTime                     *string              `json:"end_time"`
-	Description                 *string              `json:"description"`
-	PaymentDay                  *int                 `json:"payment_day"`
+	StartTime                   *string              `json:"start_time,omitempty"`
+	EndTime                     *string              `json:"end_time,omitempty"`
+	Description                 *string              `json:"description,omitempty"`
+	PaymentDay                  *time.Time           `json:"payment_day,omitempty"`
 	RequiresSupervisorSignature bool                 `json:"requires_supervisor_signature"`
-	SupervisorName              *string              `json:"supervisor_name"`
+	SupervisorName              *string              `json:"supervisor_name,omitempty"`
 	Visibility                  models.JobVisibility `json:"visibility"`
 	PaymentType                 models.PaymentType   `json:"payment_type"`
+	TotalWage                   *float64             `json:"total_wage,omitempty"`
 	CreatedAt                   time.Time            `json:"created_at"`
 	UpdatedAt                   time.Time            `json:"updated_at"`
 
 	// Relations
 	BuilderProfile  *BuilderProfileResponse  `json:"builder_profile,omitempty"`
-	Jobsite         *JobsiteResponse         `json:"jobsite"`
-	JobType         *JobTypeResponse         `json:"job_type"`
-	JobLicenses     []JobLicenseResponse     `json:"job_licenses"`
-	JobSkills       []JobSkillResponse       `json:"job_skills"`
-	JobRequirements []JobRequirementResponse `json:"job_requirements"`
+	Jobsite         *JobsiteResponse         `json:"jobsite,omitempty"`
+	JobType         *JobTypeResponse         `json:"job_type,omitempty"`
+	JobLicenses     []JobLicenseResponse     `json:"job_licenses,omitempty"`
+	JobSkills       []JobSkillResponse       `json:"job_skills,omitempty"`
+	JobRequirements []JobRequirementResponse `json:"job_requirements,omitempty"`
 }
 
 // BuilderProfileResponse represents a builder profile in responses
@@ -130,6 +131,49 @@ type CreateJobResponse struct {
 type GetJobResponse struct {
 	Job     JobResponse `json:"job"`
 	Message string      `json:"message"`
+}
+
+// GetBuilderJobDetailResponse represents the response when getting a builder job detail (shows null values)
+type GetBuilderJobDetailResponse struct {
+	Job     JobDetailResponse `json:"job"`
+	Message string            `json:"message"`
+}
+
+// JobDetailResponse represents a job in detail API responses (shows null values)
+type JobDetailResponse struct {
+	ID                          uuid.UUID            `json:"id"`
+	ManyLabours                 int                  `json:"many_labours"`
+	OngoingWork                 bool                 `json:"ongoing_work"`
+	WageSiteAllowance           *float64             `json:"wage_site_allowance"`
+	WageLeadingHandAllowance    *float64             `json:"wage_leading_hand_allowance"`
+	WageProductivityAllowance   *float64             `json:"wage_productivity_allowance"`
+	ExtrasOvertimeRate          *float64             `json:"extras_overtime_rate"`
+	WageHourlyRate              *float64             `json:"wage_hourly_rate"`
+	TravelAllowance             *float64             `json:"travel_allowance"`
+	GST                         *float64             `json:"gst"`
+	StartDateWork               *time.Time           `json:"start_date_work"`
+	EndDateWork                 *time.Time           `json:"end_date_work"`
+	WorkSaturday                bool                 `json:"work_saturday"`
+	WorkSunday                  bool                 `json:"work_sunday"`
+	StartTime                   *string              `json:"start_time"`
+	EndTime                     *string              `json:"end_time"`
+	Description                 *string              `json:"description"`
+	PaymentDay                  *time.Time           `json:"payment_day"`
+	RequiresSupervisorSignature bool                 `json:"requires_supervisor_signature"`
+	SupervisorName              *string              `json:"supervisor_name"`
+	Visibility                  models.JobVisibility `json:"visibility"`
+	PaymentType                 models.PaymentType   `json:"payment_type"`
+	TotalWage                   *float64             `json:"total_wage"`
+	CreatedAt                   time.Time            `json:"created_at"`
+	UpdatedAt                   time.Time            `json:"updated_at"`
+
+	// Relations
+	BuilderProfile  *BuilderProfileResponse  `json:"builder_profile"`
+	Jobsite         *JobsiteResponse         `json:"jobsite"`
+	JobType         *JobTypeResponse         `json:"job_type"`
+	JobLicenses     []JobLicenseResponse     `json:"job_licenses"`
+	JobSkills       []JobSkillResponse       `json:"job_skills"`
+	JobRequirements []JobRequirementResponse `json:"job_requirements"`
 }
 
 // GetJobsResponse represents the response when getting multiple jobs

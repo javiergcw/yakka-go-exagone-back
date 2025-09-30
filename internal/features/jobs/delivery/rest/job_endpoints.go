@@ -129,11 +129,14 @@ func (h *JobHandler) CreateJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get job with all relations for response
+	log.Printf("🔍 CreateJob - Getting job with relations for ID: %s", job.ID)
 	jobWithRelations, err := h.jobUsecase.GetJobWithRelations(r.Context(), job.ID)
 	if err != nil {
+		log.Printf("🚫 CreateJob - Failed to get job with relations: %v", err)
 		response.WriteError(w, http.StatusInternalServerError, "Failed to get job details")
 		return
 	}
+	log.Printf("🔍 CreateJob - Job with relations loaded, JobSkills count: %d", len(jobWithRelations.JobSkills))
 
 	// Get additional relation data
 	jobsite, err := h.jobsiteRepo.GetByID(r.Context(), job.JobsiteID)
@@ -277,10 +280,34 @@ func (h *JobHandler) GetMyJobs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to response
+	// Convert to response with full relations
 	var jobsResp []payload.JobResponse
 	for _, job := range jobs {
-		jobsResp = append(jobsResp, h.convertToJobResponse(job))
+		// Get job with all relations for each job
+		jobWithRelations, err := h.jobUsecase.GetJobWithRelations(r.Context(), job.ID)
+		if err != nil {
+			log.Printf("🚫 GetMyJobs - Failed to get job with relations for ID %s: %v", job.ID, err)
+			// Fallback to basic response if relations fail
+			jobsResp = append(jobsResp, h.convertToJobResponse(job))
+			continue
+		}
+
+		// Get additional relation data
+		jobsite, err := h.jobsiteRepo.GetByID(r.Context(), job.JobsiteID)
+		if err != nil {
+			log.Printf("🚫 GetMyJobs - Failed to get jobsite for job %s: %v", job.ID, err)
+			jobsite = nil
+		}
+
+		jobType, err := h.jobTypeRepo.GetByID(r.Context(), job.JobTypeID)
+		if err != nil {
+			log.Printf("🚫 GetMyJobs - Failed to get job type for job %s: %v", job.ID, err)
+			jobType = nil
+		}
+
+		// Convert to response with full relations
+		jobResp := h.convertToJobResponseWithRelations(r.Context(), jobWithRelations, builderProfile, jobsite, jobType)
+		jobsResp = append(jobsResp, jobResp)
 	}
 
 	resp := payload.GetJobsResponse{
@@ -744,25 +771,44 @@ func (h *JobHandler) GetBuilderJobDetail(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get job detail (only if owned by builder)
-	log.Printf("🔍 Handler - Calling GetBuilderJobDetail with Job ID: %s, Builder Profile ID: %s", jobID, builderProfileID)
-	jobDetail, err := h.jobUsecase.GetBuilderJobDetail(r.Context(), jobID, builderProfileID)
+	// Get job with all relations
+	job, err := h.jobUsecase.GetJobWithRelations(r.Context(), jobID)
 	if err != nil {
-		log.Printf("🚫 Handler - Error in GetBuilderJobDetail: %v", err)
-		if err.Error() == "job not found" {
-			response.WriteError(w, http.StatusNotFound, "Job not found")
-			return
-		}
-		if err.Error() == "invalid job - not owned by builder" {
-			response.WriteError(w, http.StatusForbidden, "Invalid job - not owned by builder")
-			return
-		}
-		response.WriteError(w, http.StatusInternalServerError, "Failed to get job detail")
+		response.WriteError(w, http.StatusNotFound, "Job not found")
 		return
 	}
-	log.Printf("🔍 Handler - GetBuilderJobDetail successful, returning job detail")
 
-	response.WriteJSON(w, http.StatusOK, jobDetail)
+	// Verify that the job belongs to the builder
+	if job.BuilderProfileID != builderProfileID {
+		response.WriteError(w, http.StatusForbidden, "Invalid job - not owned by builder")
+		return
+	}
+
+	// Get additional relation data
+	builderProfile, err := h.builderProfileRepo.GetByID(r.Context(), job.BuilderProfileID)
+	if err != nil {
+		log.Printf("🚫 GetBuilderJobDetail - Failed to get builder profile: %v", err)
+	}
+
+	jobsite, err := h.jobsiteRepo.GetByID(r.Context(), job.JobsiteID)
+	if err != nil {
+		log.Printf("🚫 GetBuilderJobDetail - Failed to get jobsite: %v", err)
+	}
+
+	jobType, err := h.jobTypeRepo.GetByID(r.Context(), job.JobTypeID)
+	if err != nil {
+		log.Printf("🚫 GetBuilderJobDetail - Failed to get job type: %v", err)
+	}
+
+	// Convert to detail response (shows null values)
+	jobResp := h.convertToJobDetailResponse(r.Context(), job, builderProfile, jobsite, jobType)
+
+	resp := payload.GetBuilderJobDetailResponse{
+		Job:     jobResp,
+		Message: "Job detail retrieved successfully",
+	}
+
+	response.WriteJSON(w, http.StatusOK, resp)
 }
 
 // UpdateJobVisibility updates the visibility of a job (only for the owner builder)
@@ -845,6 +891,212 @@ func (h *JobHandler) convertToJobResponseWithRelations(ctx context.Context, job 
 		CreatedAt:                   job.CreatedAt,
 		UpdatedAt:                   job.UpdatedAt,
 	}
+
+	// Calculate total wage
+	totalWage := calculateTotalWage(job)
+	jobResp.TotalWage = &totalWage
+
+	// Add builder profile information
+	if builderProfile != nil {
+		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
+			ID:          builderProfile.ID,
+			CompanyName: getStringValue(builderProfile.CompanyName),
+			DisplayName: builderProfile.DisplayName,
+			Location:    builderProfile.Location,
+			Phone:       nil,
+			Email:       nil,
+			CreatedAt:   builderProfile.CreatedAt,
+			UpdatedAt:   builderProfile.UpdatedAt,
+		}
+	}
+
+	// Add jobsite information
+	if jobsite != nil {
+		jobResp.Jobsite = &payload.JobsiteResponse{
+			ID:          jobsite.ID,
+			Name:        getStringValue(jobsite.Description),
+			Address:     jobsite.Address,
+			City:        jobsite.City,
+			Suburb:      jobsite.Suburb,
+			Description: jobsite.Description,
+			Latitude:    jobsite.Latitude,
+			Longitude:   jobsite.Longitude,
+			Phone:       jobsite.Phone,
+			CreatedAt:   jobsite.CreatedAt,
+			UpdatedAt:   jobsite.UpdatedAt,
+		}
+	}
+
+	// Add job type information
+	if jobType != nil {
+		jobResp.JobType = &payload.JobTypeResponse{
+			ID:          jobType.ID,
+			Name:        jobType.Name,
+			Description: jobType.Description,
+			CreatedAt:   jobType.CreatedAt,
+			UpdatedAt:   jobType.UpdatedAt,
+		}
+	}
+
+	// Convert job licenses with full details
+	for _, jobLicense := range job.JobLicenses {
+		// Get license details
+		licenseDetails, err := h.licenseRepo.GetByID(ctx, jobLicense.LicenseID)
+		if err != nil {
+			log.Printf("🚫 Failed to get license details for ID %s: %v", jobLicense.LicenseID, err)
+			continue
+		}
+
+		jobLicenseResp := payload.JobLicenseResponse{
+			ID:        jobLicense.ID,
+			JobID:     jobLicense.JobID,
+			LicenseID: jobLicense.LicenseID,
+			License: &payload.LicenseResponse{
+				ID:          licenseDetails.ID,
+				Name:        licenseDetails.Name,
+				Description: &licenseDetails.Description,
+			},
+			CreatedAt: jobLicense.CreatedAt,
+		}
+		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
+	}
+
+	// Convert job skills with full details
+	log.Printf("🔍 convertToJobResponseWithRelations - JobSkills count: %d", len(job.JobSkills))
+	for i, jobSkill := range job.JobSkills {
+		log.Printf("🔍 convertToJobResponseWithRelations - JobSkill %d: ID=%s, CategoryID=%v, SubcategoryID=%v", i, jobSkill.ID, jobSkill.SkillCategoryID, jobSkill.SkillSubcategoryID)
+
+		jobSkillResp := payload.JobSkillResponse{
+			ID:                 jobSkill.ID,
+			JobID:              jobSkill.JobID,
+			SkillCategoryID:    jobSkill.SkillCategoryID,
+			SkillSubcategoryID: jobSkill.SkillSubcategoryID,
+			CreatedAt:          jobSkill.CreatedAt,
+		}
+
+		// Get skill category details if available
+		if jobSkill.SkillCategoryID != nil {
+			skillCategory, err := h.skillCategoryRepo.GetByID(ctx, *jobSkill.SkillCategoryID)
+			if err != nil {
+				log.Printf("🚫 Failed to get skill category details for ID %s: %v", *jobSkill.SkillCategoryID, err)
+			} else {
+				jobSkillResp.SkillCategory = &payload.SkillCategoryResponse{
+					ID:          skillCategory.ID,
+					Name:        skillCategory.Name,
+					Description: &skillCategory.Description,
+				}
+				log.Printf("🔍 convertToJobResponseWithRelations - SkillCategory loaded: %s", skillCategory.Name)
+			}
+		}
+
+		// Get skill subcategory details if available
+		if jobSkill.SkillSubcategoryID != nil {
+			skillSubcategory, err := h.skillSubcategoryRepo.GetByID(ctx, *jobSkill.SkillSubcategoryID)
+			if err != nil {
+				log.Printf("🚫 Failed to get skill subcategory details for ID %s: %v", *jobSkill.SkillSubcategoryID, err)
+			} else {
+				jobSkillResp.SkillSubcategory = &payload.SkillSubcategoryResponse{
+					ID:          skillSubcategory.ID,
+					Name:        skillSubcategory.Name,
+					Description: &skillSubcategory.Description,
+				}
+				log.Printf("🔍 convertToJobResponseWithRelations - SkillSubcategory loaded: %s", skillSubcategory.Name)
+			}
+		}
+
+		jobResp.JobSkills = append(jobResp.JobSkills, jobSkillResp)
+	}
+	log.Printf("🔍 convertToJobResponseWithRelations - Final JobSkills count: %d", len(jobResp.JobSkills))
+
+	// Convert job requirements with full details
+	for _, jobRequirement := range job.JobRequirements {
+		// Get job requirement details
+		requirementDetails, err := h.jobRequirementRepo.GetByID(ctx, jobRequirement.JobRequirementID)
+		if err != nil {
+			log.Printf("🚫 Failed to get job requirement details for ID %s: %v", jobRequirement.JobRequirementID, err)
+			continue
+		}
+
+		jobRequirementResp := payload.JobRequirementResponse{
+			ID:          requirementDetails.ID,
+			Name:        requirementDetails.Name,
+			Description: requirementDetails.Description,
+			IsActive:    requirementDetails.IsActive,
+			CreatedAt:   requirementDetails.CreatedAt,
+			UpdatedAt:   requirementDetails.UpdatedAt,
+		}
+		jobResp.JobRequirements = append(jobResp.JobRequirements, jobRequirementResp)
+	}
+
+	return jobResp
+}
+
+// getStringValue safely dereferences a string pointer
+func getStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// calculateTotalWage calculates the total wage by summing all wage components
+func calculateTotalWage(job *models.Job) float64 {
+	var total float64
+
+	if job.WageSiteAllowance != nil {
+		total += *job.WageSiteAllowance
+	}
+	if job.WageLeadingHandAllowance != nil {
+		total += *job.WageLeadingHandAllowance
+	}
+	if job.WageProductivityAllowance != nil {
+		total += *job.WageProductivityAllowance
+	}
+	if job.WageHourlyRate != nil {
+		total += *job.WageHourlyRate
+	}
+	if job.TravelAllowance != nil {
+		total += *job.TravelAllowance
+	}
+	if job.ExtrasOvertimeRate != nil {
+		total += *job.ExtrasOvertimeRate
+	}
+
+	return total
+}
+
+// convertToJobDetailResponse converts a Job model to JobDetailResponse with full relations (shows null values)
+func (h *JobHandler) convertToJobDetailResponse(ctx context.Context, job *models.Job, builderProfile *builder_models.BuilderProfile, jobsite *jobsite_models.Jobsite, jobType *job_type_models.JobType) payload.JobDetailResponse {
+	jobResp := payload.JobDetailResponse{
+		ID:                          job.ID,
+		ManyLabours:                 job.ManyLabours,
+		OngoingWork:                 job.OngoingWork,
+		WageSiteAllowance:           job.WageSiteAllowance,
+		WageLeadingHandAllowance:    job.WageLeadingHandAllowance,
+		WageProductivityAllowance:   job.WageProductivityAllowance,
+		ExtrasOvertimeRate:          job.ExtrasOvertimeRate,
+		WageHourlyRate:              job.WageHourlyRate,
+		TravelAllowance:             job.TravelAllowance,
+		GST:                         job.GST,
+		StartDateWork:               job.StartDateWork,
+		EndDateWork:                 job.EndDateWork,
+		WorkSaturday:                job.WorkSaturday,
+		WorkSunday:                  job.WorkSunday,
+		StartTime:                   job.StartTime,
+		EndTime:                     job.EndTime,
+		Description:                 job.Description,
+		PaymentDay:                  job.PaymentDay,
+		RequiresSupervisorSignature: job.RequiresSupervisorSignature,
+		SupervisorName:              job.SupervisorName,
+		Visibility:                  job.Visibility,
+		PaymentType:                 job.PaymentType,
+		CreatedAt:                   job.CreatedAt,
+		UpdatedAt:                   job.UpdatedAt,
+	}
+
+	// Calculate total wage
+	totalWage := calculateTotalWage(job)
+	jobResp.TotalWage = &totalWage
 
 	// Add builder profile information
 	if builderProfile != nil {
@@ -973,12 +1225,4 @@ func (h *JobHandler) convertToJobResponseWithRelations(ctx context.Context, job 
 	}
 
 	return jobResp
-}
-
-// getStringValue safely dereferences a string pointer
-func getStringValue(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

@@ -238,8 +238,13 @@ func (v *JobValidationService) validateBusinessRules(req payload.CreateJobReques
 
 	// Validate payment day for FIXED_DAY payment type
 	if req.PaymentType == "FIXED_DAY" {
-		if req.PaymentDay == nil || *req.PaymentDay < 1 || *req.PaymentDay > 31 {
-			return fmt.Errorf("payment day must be between 1 and 31 for FIXED_DAY payment type")
+		if req.PaymentDay == nil {
+			return fmt.Errorf("payment day is required for FIXED_DAY payment type")
+		}
+		// For FIXED_DAY, we expect a specific date, not a day of month
+		// The validation is now about having a valid date
+		if req.PaymentDay.IsZero() {
+			return fmt.Errorf("payment day must be a valid date for FIXED_DAY payment type")
 		}
 	}
 

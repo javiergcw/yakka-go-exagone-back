@@ -147,16 +147,20 @@ func (u *jobUsecase) CreateJob(ctx context.Context, req payload.CreateJobRequest
 
 	// Create job skill relationships
 	// Handle new format: JobSkills with category and subcategory together
+	log.Printf("🔍 CreateJob - JobSkills count: %d", len(req.JobSkills))
 	if len(req.JobSkills) > 0 {
-		for _, jobSkillReq := range req.JobSkills {
+		for i, jobSkillReq := range req.JobSkills {
+			log.Printf("🔍 CreateJob - Creating JobSkill %d: CategoryID=%v, SubcategoryID=%v", i, jobSkillReq.SkillCategoryID, jobSkillReq.SkillSubcategoryID)
 			jobSkill := &models.JobSkill{
 				JobID:              job.ID,
 				SkillCategoryID:    jobSkillReq.SkillCategoryID,
 				SkillSubcategoryID: jobSkillReq.SkillSubcategoryID,
 			}
 			if err := u.jobSkillRepo.Create(ctx, jobSkill); err != nil {
+				log.Printf("🚫 CreateJob - Failed to create job skill relationship: %v", err)
 				return nil, fmt.Errorf("failed to create job skill relationship: %w", err)
 			}
+			log.Printf("🔍 CreateJob - JobSkill created successfully: ID=%s", jobSkill.ID)
 		}
 	} else {
 		// Handle legacy format: separate arrays for backward compatibility
@@ -547,6 +551,68 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 			applicationID = &id
 		}
 
+		// Calculate total wage for budget
+		totalWage := u.calculateTotalWage(job)
+
+		// Create jobsite info
+		jobsiteInfo := &payload.JobsiteInfo{
+			ID:          jobsite.ID.String(),
+			Name:        getStringValue(jobsite.Description), // Use description as name
+			Address:     jobsite.Address,
+			City:        jobsite.City,
+			Suburb:      jobsite.Suburb,
+			Description: jobsite.Description,
+			Latitude:    jobsite.Latitude,
+			Longitude:   jobsite.Longitude,
+			Phone:       jobsite.Phone,
+			CreatedAt:   jobsite.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:   jobsite.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		}
+
+		// Create skills info
+		var skillsInfo []payload.JobSkillInfo
+		for _, jobSkill := range job.JobSkills {
+			skillInfo := payload.JobSkillInfo{
+				ID:                 jobSkill.ID.String(),
+				JobID:              jobSkill.JobID.String(),
+				SkillCategoryID:    nil,
+				SkillSubcategoryID: nil,
+				CreatedAt:          jobSkill.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			}
+
+			// Get skill category details if available
+			if jobSkill.SkillCategoryID != nil {
+				categoryID := jobSkill.SkillCategoryID.String()
+				skillInfo.SkillCategoryID = &categoryID
+
+				skillCategory, err := u.validator.skillCategoryRepo.GetByID(ctx, *jobSkill.SkillCategoryID)
+				if err == nil {
+					skillInfo.SkillCategory = &payload.SkillCategoryInfo{
+						ID:          skillCategory.ID.String(),
+						Name:        skillCategory.Name,
+						Description: &skillCategory.Description,
+					}
+				}
+			}
+
+			// Get skill subcategory details if available
+			if jobSkill.SkillSubcategoryID != nil {
+				subcategoryID := jobSkill.SkillSubcategoryID.String()
+				skillInfo.SkillSubcategoryID = &subcategoryID
+
+				skillSubcategory, err := u.validator.skillSubcategoryRepo.GetByID(ctx, *jobSkill.SkillSubcategoryID)
+				if err == nil {
+					skillInfo.SkillSubcategory = &payload.SkillSubcategoryInfo{
+						ID:          skillSubcategory.ID.String(),
+						Name:        skillSubcategory.Name,
+						Description: &skillSubcategory.Description,
+					}
+				}
+			}
+
+			skillsInfo = append(skillsInfo, skillInfo)
+		}
+
 		labourJob := payload.LabourJobInfo{
 			JobID:           job.ID.String(),
 			Title:           jobType.Name, // Get from job type
@@ -556,7 +622,7 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 			ExperienceLevel: "INTERMEDIATE", // TODO: Get from job requirements
 			Status:          "ACTIVE",       // TODO: Add status field to job
 			Visibility:      string(job.Visibility),
-			Budget:          job.WageSiteAllowance,
+			TotalWage:       &totalWage,
 			StartDate:       job.StartDateWork,
 			EndDate:         job.EndDateWork,
 			CreatedAt:       job.CreatedAt,
@@ -568,6 +634,8 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 				Location:    getStringValue(builderProfile.Location),
 				AvatarURL:   nil, // TODO: Get from user table
 			},
+			Jobsite:           jobsiteInfo,
+			Skills:            skillsInfo,
 			HasApplied:        hasApplied,
 			ApplicationStatus: applicationStatus,
 			ApplicationID:     applicationID,
@@ -730,6 +798,10 @@ func (u *jobUsecase) convertToJobResponseWithRelations(ctx context.Context, job 
 		CreatedAt:                   job.CreatedAt,
 		UpdatedAt:                   job.UpdatedAt,
 	}
+
+	// Calculate total wage
+	totalWage := u.calculateTotalWage(job)
+	jobResp.TotalWage = &totalWage
 
 	// Add builder profile information
 	if builderProfile != nil {
@@ -1019,4 +1091,30 @@ func (u *jobUsecase) UpdateJobVisibility(ctx context.Context, jobID uuid.UUID, b
 	}
 
 	return response, nil
+}
+
+// calculateTotalWage calculates the total wage by summing all wage components
+func (u *jobUsecase) calculateTotalWage(job *models.Job) float64 {
+	var total float64
+
+	if job.WageSiteAllowance != nil {
+		total += *job.WageSiteAllowance
+	}
+	if job.WageLeadingHandAllowance != nil {
+		total += *job.WageLeadingHandAllowance
+	}
+	if job.WageProductivityAllowance != nil {
+		total += *job.WageProductivityAllowance
+	}
+	if job.WageHourlyRate != nil {
+		total += *job.WageHourlyRate
+	}
+	if job.TravelAllowance != nil {
+		total += *job.TravelAllowance
+	}
+	if job.ExtrasOvertimeRate != nil {
+		total += *job.ExtrasOvertimeRate
+	}
+
+	return total
 }
