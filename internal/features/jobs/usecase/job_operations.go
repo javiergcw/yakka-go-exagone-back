@@ -90,7 +90,7 @@ func NewJobUsecase(
 		jobApplicationRepo:    jobApplicationRepo,
 		jobAssignmentRepo:     jobAssignmentRepo,
 		licenseRepo:           licenseRepo,
-		validator:             NewJobValidationService(builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo),
+		validator:             NewJobValidationService(builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, jobRequirementRepo),
 	}
 }
 

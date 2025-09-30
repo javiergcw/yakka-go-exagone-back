@@ -123,7 +123,7 @@ func main() {
 	// jobAssignmentHandler := job_assignment_rest.NewJobAssignmentHandler(jobAssignmentUseCase) // Available for future use
 
 	// Initialize router
-	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler, jobUseCase, builderRepo, paymentConstantUseCase, jobRequirementRepo, jobTypeRepo)
+	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler, jobUseCase, builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, paymentConstantUseCase, jobRequirementRepo)
 	httpRouter := router.SetupRoutes()
 
 	// Start server

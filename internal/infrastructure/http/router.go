@@ -12,6 +12,7 @@ import (
 	job_rest "github.com/yakka-backend/internal/features/jobs/delivery/rest"
 	job_usecase "github.com/yakka-backend/internal/features/jobs/usecase"
 	jobsite_rest "github.com/yakka-backend/internal/features/jobsites/delivery/rest"
+	jobsite_db "github.com/yakka-backend/internal/features/jobsites/entity/database"
 	labour_rest "github.com/yakka-backend/internal/features/labour_profiles/delivery/rest"
 	experience_level_rest "github.com/yakka-backend/internal/features/masters/experience_levels/delivery/rest"
 	job_requirement_rest "github.com/yakka-backend/internal/features/masters/job_requirements/delivery/rest"
@@ -19,6 +20,7 @@ import (
 	job_type_rest "github.com/yakka-backend/internal/features/masters/job_types/delivery/rest"
 	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	license_rest "github.com/yakka-backend/internal/features/masters/licenses/delivery/rest"
+	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
 	payment_constant_rest "github.com/yakka-backend/internal/features/masters/payment_constants/delivery/rest"
 	payment_constant_usecase "github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_category_rest "github.com/yakka-backend/internal/features/masters/skills/delivery/rest"
@@ -57,9 +59,11 @@ func NewRouter(
 	jobsiteHandler *jobsite_rest.JobsiteHandler,
 	jobUsecase job_usecase.JobUsecase,
 	builderProfileRepo builder_db.BuilderProfileRepository,
+	jobsiteRepo jobsite_db.JobsiteRepository,
+	jobTypeRepo job_type_db.JobTypeRepository,
+	licenseRepo license_db.LicenseRepository,
 	paymentConstantUseCase payment_constant_usecase.PaymentConstantUsecase,
 	jobRequirementRepo job_requirement_db.JobRequirementRepository,
-	jobTypeRepo job_type_db.JobTypeRepository,
 ) *Router {
 	return &Router{
 		authHandler:             authHandler,
@@ -69,7 +73,7 @@ func NewRouter(
 		labourProfileHandler:    labourProfileHandler,
 		builderProfileHandler:   builderProfileHandler,
 		jobsiteHandler:          jobsiteHandler,
-		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo),
+		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo, jobsiteRepo, jobTypeRepo, licenseRepo, jobRequirementRepo),
 		licenseHandler:          license_rest.NewLicenseHandler(),
 		experienceLevelHandler:  experience_level_rest.NewExperienceLevelHandler(),
 		skillCategoryHandler:    skill_category_rest.NewSkillCategoryHandler(),

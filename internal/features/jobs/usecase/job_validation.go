@@ -8,6 +8,7 @@ import (
 	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	"github.com/yakka-backend/internal/features/jobs/payload"
 	jobsite_db "github.com/yakka-backend/internal/features/jobsites/entity/database"
+	job_requirement_db "github.com/yakka-backend/internal/features/masters/job_requirements/entity/database"
 	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
 	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
 	skill_category_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
@@ -21,6 +22,7 @@ type JobValidationService struct {
 	licenseRepo          license_db.LicenseRepository
 	skillCategoryRepo    skill_category_db.SkillCategoryRepository
 	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository
+	jobRequirementRepo   job_requirement_db.JobRequirementRepository
 }
 
 // NewJobValidationService creates a new job validation service
@@ -31,6 +33,7 @@ func NewJobValidationService(
 	licenseRepo license_db.LicenseRepository,
 	skillCategoryRepo skill_category_db.SkillCategoryRepository,
 	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository,
+	jobRequirementRepo job_requirement_db.JobRequirementRepository,
 ) *JobValidationService {
 	return &JobValidationService{
 		builderRepo:          builderRepo,
@@ -39,6 +42,7 @@ func NewJobValidationService(
 		licenseRepo:          licenseRepo,
 		skillCategoryRepo:    skillCategoryRepo,
 		skillSubcategoryRepo: skillSubcategoryRepo,
+		jobRequirementRepo:   jobRequirementRepo,
 	}
 }
 
@@ -81,6 +85,13 @@ func (v *JobValidationService) ValidateCreateJobRequest(ctx context.Context, req
 	for _, skillSubcategoryID := range req.SkillSubcategoryIDs {
 		if err := v.validateSkillSubcategory(ctx, skillSubcategoryID); err != nil {
 			return fmt.Errorf("invalid skill subcategory ID %s: %w", skillSubcategoryID, err)
+		}
+	}
+
+	// Validate job requirements exist
+	for _, jobRequirementID := range req.JobRequirementIDs {
+		if err := v.validateJobRequirement(ctx, jobRequirementID); err != nil {
+			return fmt.Errorf("invalid job requirement ID %s: %w", jobRequirementID, err)
 		}
 	}
 
@@ -225,6 +236,21 @@ func (v *JobValidationService) validateBusinessRules(req payload.CreateJobReques
 		if err := v.validateTimeFormat(*req.EndTime); err != nil {
 			return fmt.Errorf("invalid end time format: %w", err)
 		}
+	}
+
+	return nil
+}
+
+// validateJobRequirement checks if job requirement exists
+func (v *JobValidationService) validateJobRequirement(ctx context.Context, jobRequirementID uuid.UUID) error {
+	if jobRequirementID == uuid.Nil {
+		return fmt.Errorf("job requirement ID cannot be nil")
+	}
+
+	// Check if job requirement exists in database
+	_, err := v.jobRequirementRepo.GetByID(ctx, jobRequirementID)
+	if err != nil {
+		return fmt.Errorf("job requirement with ID %s does not exist: %w", jobRequirementID, err)
 	}
 
 	return nil

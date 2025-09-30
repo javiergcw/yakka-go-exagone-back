@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -8,9 +9,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
+	builder_models "github.com/yakka-backend/internal/features/builder_profiles/models"
 	"github.com/yakka-backend/internal/features/jobs/models"
 	"github.com/yakka-backend/internal/features/jobs/payload"
 	"github.com/yakka-backend/internal/features/jobs/usecase"
+	jobsite_db "github.com/yakka-backend/internal/features/jobsites/entity/database"
+	jobsite_models "github.com/yakka-backend/internal/features/jobsites/models"
+	job_requirement_db "github.com/yakka-backend/internal/features/masters/job_requirements/entity/database"
+	job_type_db "github.com/yakka-backend/internal/features/masters/job_types/entity/database"
+	job_type_models "github.com/yakka-backend/internal/features/masters/job_types/models"
+	license_db "github.com/yakka-backend/internal/features/masters/licenses/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 	"github.com/yakka-backend/internal/shared/validation"
@@ -19,12 +27,20 @@ import (
 type JobHandler struct {
 	jobUsecase         usecase.JobUsecase
 	builderProfileRepo builder_db.BuilderProfileRepository
+	jobsiteRepo        jobsite_db.JobsiteRepository
+	jobTypeRepo        job_type_db.JobTypeRepository
+	licenseRepo        license_db.LicenseRepository
+	jobRequirementRepo job_requirement_db.JobRequirementRepository
 }
 
-func NewJobHandler(jobUsecase usecase.JobUsecase, builderProfileRepo builder_db.BuilderProfileRepository) *JobHandler {
+func NewJobHandler(jobUsecase usecase.JobUsecase, builderProfileRepo builder_db.BuilderProfileRepository, jobsiteRepo jobsite_db.JobsiteRepository, jobTypeRepo job_type_db.JobTypeRepository, licenseRepo license_db.LicenseRepository, jobRequirementRepo job_requirement_db.JobRequirementRepository) *JobHandler {
 	return &JobHandler{
 		jobUsecase:         jobUsecase,
 		builderProfileRepo: builderProfileRepo,
+		jobsiteRepo:        jobsiteRepo,
+		jobTypeRepo:        jobTypeRepo,
+		licenseRepo:        licenseRepo,
+		jobRequirementRepo: jobRequirementRepo,
 	}
 }
 
@@ -107,8 +123,28 @@ func (h *JobHandler) CreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert to response
-	jobResp := h.convertToJobResponse(job)
+	// Get job with all relations for response
+	jobWithRelations, err := h.jobUsecase.GetJobWithRelations(r.Context(), job.ID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get job details")
+		return
+	}
+
+	// Get additional relation data
+	jobsite, err := h.jobsiteRepo.GetByID(r.Context(), job.JobsiteID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get jobsite details")
+		return
+	}
+
+	jobType, err := h.jobTypeRepo.GetByID(r.Context(), job.JobTypeID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get job type details")
+		return
+	}
+
+	// Convert to response with relations using usecase method
+	jobResp := h.convertToJobResponseWithRelations(r.Context(), jobWithRelations, builderProfile, jobsite, jobType)
 	resp := payload.CreateJobResponse{
 		Job:     jobResp,
 		Message: "Job created successfully",
@@ -774,4 +810,141 @@ func (h *JobHandler) UpdateJobVisibility(w http.ResponseWriter, r *http.Request)
 	}
 
 	response.WriteJSON(w, http.StatusOK, jobDetail)
+}
+
+// convertToJobResponseWithRelations converts a Job model to JobResponse with full relations
+func (h *JobHandler) convertToJobResponseWithRelations(ctx context.Context, job *models.Job, builderProfile *builder_models.BuilderProfile, jobsite *jobsite_models.Jobsite, jobType *job_type_models.JobType) payload.JobResponse {
+	jobResp := payload.JobResponse{
+		ID:                          job.ID,
+		ManyLabours:                 job.ManyLabours,
+		OngoingWork:                 job.OngoingWork,
+		WageSiteAllowance:           job.WageSiteAllowance,
+		WageLeadingHandAllowance:    job.WageLeadingHandAllowance,
+		WageProductivityAllowance:   job.WageProductivityAllowance,
+		ExtrasOvertimeRate:          job.ExtrasOvertimeRate,
+		WageHourlyRate:              job.WageHourlyRate,
+		TravelAllowance:             job.TravelAllowance,
+		GST:                         job.GST,
+		StartDateWork:               job.StartDateWork,
+		EndDateWork:                 job.EndDateWork,
+		WorkSaturday:                job.WorkSaturday,
+		WorkSunday:                  job.WorkSunday,
+		StartTime:                   job.StartTime,
+		EndTime:                     job.EndTime,
+		Description:                 job.Description,
+		PaymentDay:                  job.PaymentDay,
+		RequiresSupervisorSignature: job.RequiresSupervisorSignature,
+		SupervisorName:              job.SupervisorName,
+		Visibility:                  job.Visibility,
+		PaymentType:                 job.PaymentType,
+		CreatedAt:                   job.CreatedAt,
+		UpdatedAt:                   job.UpdatedAt,
+	}
+
+	// Add builder profile information
+	if builderProfile != nil {
+		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
+			ID:          builderProfile.ID,
+			CompanyName: getStringValue(builderProfile.CompanyName),
+			DisplayName: builderProfile.DisplayName,
+			Location:    builderProfile.Location,
+			Phone:       nil,
+			Email:       nil,
+			CreatedAt:   builderProfile.CreatedAt,
+			UpdatedAt:   builderProfile.UpdatedAt,
+		}
+	}
+
+	// Add jobsite information
+	if jobsite != nil {
+		jobResp.Jobsite = &payload.JobsiteResponse{
+			ID:          jobsite.ID,
+			Name:        getStringValue(jobsite.Description),
+			Address:     jobsite.Address,
+			City:        jobsite.City,
+			Suburb:      jobsite.Suburb,
+			Description: jobsite.Description,
+			Latitude:    jobsite.Latitude,
+			Longitude:   jobsite.Longitude,
+			Phone:       jobsite.Phone,
+			CreatedAt:   jobsite.CreatedAt,
+			UpdatedAt:   jobsite.UpdatedAt,
+		}
+	}
+
+	// Add job type information
+	if jobType != nil {
+		jobResp.JobType = &payload.JobTypeResponse{
+			ID:          jobType.ID,
+			Name:        jobType.Name,
+			Description: jobType.Description,
+			CreatedAt:   jobType.CreatedAt,
+			UpdatedAt:   jobType.UpdatedAt,
+		}
+	}
+
+	// Convert job licenses with full details
+	for _, jobLicense := range job.JobLicenses {
+		// Get license details
+		licenseDetails, err := h.licenseRepo.GetByID(ctx, jobLicense.LicenseID)
+		if err != nil {
+			log.Printf("🚫 Failed to get license details for ID %s: %v", jobLicense.LicenseID, err)
+			continue
+		}
+
+		jobLicenseResp := payload.JobLicenseResponse{
+			ID:        jobLicense.ID,
+			JobID:     jobLicense.JobID,
+			LicenseID: jobLicense.LicenseID,
+			License: &payload.LicenseResponse{
+				ID:          licenseDetails.ID,
+				Name:        licenseDetails.Name,
+				Description: &licenseDetails.Description,
+			},
+			CreatedAt: jobLicense.CreatedAt,
+		}
+		jobResp.JobLicenses = append(jobResp.JobLicenses, jobLicenseResp)
+	}
+
+	// Convert job skills (basic info only)
+	for _, jobSkill := range job.JobSkills {
+		jobSkillResp := payload.JobSkillResponse{
+			ID:                 jobSkill.ID,
+			JobID:              jobSkill.JobID,
+			SkillCategoryID:    jobSkill.SkillCategoryID,
+			SkillSubcategoryID: jobSkill.SkillSubcategoryID,
+			CreatedAt:          jobSkill.CreatedAt,
+		}
+		jobResp.JobSkills = append(jobResp.JobSkills, jobSkillResp)
+	}
+
+	// Convert job requirements with full details
+	for _, jobRequirement := range job.JobRequirements {
+		// Get job requirement details
+		requirementDetails, err := h.jobRequirementRepo.GetByID(ctx, jobRequirement.JobRequirementID)
+		if err != nil {
+			log.Printf("🚫 Failed to get job requirement details for ID %s: %v", jobRequirement.JobRequirementID, err)
+			continue
+		}
+
+		jobRequirementResp := payload.JobRequirementResponse{
+			ID:          requirementDetails.ID,
+			Name:        requirementDetails.Name,
+			Description: requirementDetails.Description,
+			IsActive:    requirementDetails.IsActive,
+			CreatedAt:   requirementDetails.CreatedAt,
+			UpdatedAt:   requirementDetails.UpdatedAt,
+		}
+		jobResp.JobRequirements = append(jobResp.JobRequirements, jobRequirementResp)
+	}
+
+	return jobResp
+}
+
+// getStringValue safely dereferences a string pointer
+func getStringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }
