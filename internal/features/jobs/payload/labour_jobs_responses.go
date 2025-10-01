@@ -9,6 +9,7 @@ type LabourJobInfo struct {
 	Description     string     `json:"description"`
 	Location        string     `json:"location"`
 	JobType         string     `json:"job_type"`
+	ManyLabours     int        `json:"many_labours"`
 	ExperienceLevel string     `json:"experience_level"`
 	Status          string     `json:"status"`
 	Visibility      string     `json:"visibility"`

@@ -340,17 +340,23 @@ func (h *JobHandler) GetBuilderApplicants(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// Get applicants for builder's jobs
-	jobsWithApplicants, err := h.jobUsecase.GetBuilderApplicants(r.Context(), builderProfile.ID)
+	// Get applicants for builder's jobs grouped by jobsite
+	jobsitesWithJobs, err := h.jobUsecase.GetBuilderApplicantsByJobsite(r.Context(), builderProfile.ID)
 	if err != nil {
 		response.WriteError(w, http.StatusInternalServerError, "Failed to get applicants")
 		return
 	}
 
-	resp := payload.BuilderApplicantsResponse{
-		Jobs:    jobsWithApplicants,
-		Total:   len(jobsWithApplicants),
-		Message: "Applicants retrieved successfully",
+	// Calculate total jobs
+	totalJobs := 0
+	for _, jobsite := range jobsitesWithJobs {
+		totalJobs += len(jobsite.Jobs)
+	}
+
+	resp := payload.BuilderApplicantsByJobsiteResponse{
+		Jobsites: jobsitesWithJobs,
+		Total:    totalJobs,
+		Message:  "Applicants retrieved successfully",
 	}
 
 	response.WriteJSON(w, http.StatusOK, resp)

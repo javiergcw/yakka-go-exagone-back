@@ -31,11 +31,28 @@ type JobWithApplicants struct {
 	Applicants []JobApplicantInfo `json:"applicants"`
 }
 
+// JobsiteWithJobs represents a jobsite with all its jobs and applicants
+type JobsiteWithJobs struct {
+	JobsiteID   string              `json:"jobsite_id"`
+	JobsiteName string              `json:"jobsite_name"`
+	Address     string              `json:"address"`
+	City        *string             `json:"city,omitempty"`
+	Suburb      *string             `json:"suburb,omitempty"`
+	Jobs        []JobWithApplicants `json:"jobs"`
+}
+
 // BuilderApplicantsResponse represents the response for builder applicants
 type BuilderApplicantsResponse struct {
 	Jobs    []JobWithApplicants `json:"jobs"`
 	Total   int                 `json:"total"`
 	Message string              `json:"message"`
+}
+
+// BuilderApplicantsByJobsiteResponse represents the response for builder applicants grouped by jobsite
+type BuilderApplicantsByJobsiteResponse struct {
+	Jobsites []JobsiteWithJobs `json:"jobsites"`
+	Total    int               `json:"total"`
+	Message  string            `json:"message"`
 }
 
 // BuilderApplicantDecisionResponse represents the response when hiring or rejecting an applicant

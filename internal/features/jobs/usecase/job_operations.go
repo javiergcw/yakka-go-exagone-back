@@ -38,6 +38,7 @@ type JobUsecase interface {
 	DeleteJob(ctx context.Context, id uuid.UUID) error
 	GetJobWithRelations(ctx context.Context, id uuid.UUID) (*models.Job, error)
 	GetBuilderApplicants(ctx context.Context, builderProfileID uuid.UUID) ([]payload.JobWithApplicants, error)
+	GetBuilderApplicantsByJobsite(ctx context.Context, builderProfileID uuid.UUID) ([]payload.JobsiteWithJobs, error)
 	ProcessApplicantDecision(ctx context.Context, builderProfileID uuid.UUID, req payload.BuilderApplicantDecisionRequest) (*payload.BuilderApplicantDecisionResponse, error)
 	GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) ([]payload.LabourJobInfo, error)
 	ApplyToJob(ctx context.Context, labourUserID uuid.UUID, req payload.LabourApplicationRequest) (*payload.LabourApplicationResponse, error)
@@ -441,6 +442,106 @@ func (u *jobUsecase) GetBuilderApplicants(ctx context.Context, builderProfileID 
 	return jobsWithApplicants, nil
 }
 
+// GetBuilderApplicantsByJobsite retrieves all applicants for builder's jobs grouped by jobsite
+func (u *jobUsecase) GetBuilderApplicantsByJobsite(ctx context.Context, builderProfileID uuid.UUID) ([]payload.JobsiteWithJobs, error) {
+	// Get all jobs for this builder
+	jobs, err := u.jobRepo.GetByBuilderProfileID(ctx, builderProfileID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get builder jobs: %w", err)
+	}
+
+	// Group jobs by jobsite
+	jobsiteMap := make(map[uuid.UUID]*payload.JobsiteWithJobs)
+
+	for _, job := range jobs {
+		// Get jobsite information
+		jobsite, err := u.jobsiteRepo.GetByID(ctx, job.JobsiteID)
+		if err != nil {
+			continue // Skip jobs with invalid jobsites
+		}
+
+		// Get job type for title
+		jobType, err := u.jobTypeRepo.GetByID(ctx, job.JobTypeID)
+		if err != nil {
+			continue // Skip jobs with invalid job types
+		}
+
+		// Get all applications for this job
+		applications, _, err := u.jobApplicationRepo.GetByJobID(ctx, job.ID, 1, 100) // Get up to 100 applications
+		if err != nil {
+			fmt.Printf("Error getting applications for job %s: %v\n", job.ID, err)
+			continue // Skip jobs with errors getting applications
+		}
+
+		// Convert applications to JobApplicantInfo
+		applicants := make([]payload.JobApplicantInfo, 0)
+		for _, app := range applications {
+			// Get labour profile information
+			// TODO: Get labour profile info from labour_profiles table
+			// For now, we'll create a placeholder
+			labourInfo := payload.LabourApplicantInfo{
+				UserID:    app.LabourUserID.String(),
+				FullName:  "Labour User", // TODO: Get from labour profile
+				AvatarURL: nil,
+				Phone:     nil,
+				Email:     "labour@example.com", // TODO: Get from user table
+			}
+
+			applicant := payload.JobApplicantInfo{
+				ApplicationID: app.ID.String(),
+				Status:        string(app.Status),
+				CoverLetter:   app.CoverLetter,
+				ExpectedRate:  app.ExpectedRate,
+				ResumeURL:     app.ResumeURL,
+				AppliedAt:     app.CreatedAt,
+				Labour:        labourInfo,
+			}
+
+			applicants = append(applicants, applicant)
+		}
+
+		// Create or get jobsite entry
+		if jobsiteEntry, exists := jobsiteMap[jobsite.ID]; exists {
+			// Add job to existing jobsite
+			jobWithApplicants := payload.JobWithApplicants{
+				JobID:      job.ID.String(),
+				JobTitle:   jobType.Name,
+				JobStatus:  "ACTIVE", // TODO: Add status field to job
+				CreatedAt:  job.CreatedAt,
+				Applicants: applicants,
+			}
+			jobsiteEntry.Jobs = append(jobsiteEntry.Jobs, jobWithApplicants)
+		} else {
+			// Create new jobsite entry
+			jobWithApplicants := payload.JobWithApplicants{
+				JobID:      job.ID.String(),
+				JobTitle:   jobType.Name,
+				JobStatus:  "ACTIVE", // TODO: Add status field to job
+				CreatedAt:  job.CreatedAt,
+				Applicants: applicants,
+			}
+
+			jobsiteEntry := &payload.JobsiteWithJobs{
+				JobsiteID:   jobsite.ID.String(),
+				JobsiteName: getStringValue(jobsite.Description), // Use description as name
+				Address:     jobsite.Address,
+				City:        jobsite.City,
+				Suburb:      jobsite.Suburb,
+				Jobs:        []payload.JobWithApplicants{jobWithApplicants},
+			}
+			jobsiteMap[jobsite.ID] = jobsiteEntry
+		}
+	}
+
+	// Convert map to slice
+	var jobsitesWithJobs []payload.JobsiteWithJobs
+	for _, jobsite := range jobsiteMap {
+		jobsitesWithJobs = append(jobsitesWithJobs, *jobsite)
+	}
+
+	return jobsitesWithJobs, nil
+}
+
 // ProcessApplicantDecision processes hiring or rejection of an applicant
 func (u *jobUsecase) ProcessApplicantDecision(ctx context.Context, builderProfileID uuid.UUID, req payload.BuilderApplicantDecisionRequest) (*payload.BuilderApplicantDecisionResponse, error) {
 	// Parse application ID
@@ -623,6 +724,7 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 			Description:     getStringValue(job.Description),
 			Location:        jobsite.Address, // Get from jobsite
 			JobType:         jobType.Name,
+			ManyLabours:     job.ManyLabours,
 			ExperienceLevel: "INTERMEDIATE", // TODO: Get from job requirements
 			Status:          "ACTIVE",       // TODO: Add status field to job
 			Visibility:      string(job.Visibility),
