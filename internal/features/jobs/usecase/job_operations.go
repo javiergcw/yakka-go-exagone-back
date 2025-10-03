@@ -984,9 +984,10 @@ func (u *jobUsecase) convertToJobResponseWithRelations(ctx context.Context, job 
 
 	// Add builder profile information
 	if builderProfile != nil {
+		companyName := getCompanyName(builderProfile.Company)
 		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
 			ID:          builderProfile.ID,
-			CompanyName: builderProfile.Company.Name,
+			CompanyName: companyName,
 			DisplayName: builderProfile.DisplayName,
 			Location:    builderProfile.Location,
 			Phone:       nil, // Not available in BuilderProfile model

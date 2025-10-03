@@ -28,7 +28,7 @@ func (r *builderProfileRepository) Create(ctx context.Context, profile *models.B
 // GetByID retrieves a builder profile by ID
 func (r *builderProfileRepository) GetByID(ctx context.Context, id uuid.UUID) (*models.BuilderProfile, error) {
 	var profile models.BuilderProfile
-	err := r.db.WithContext(ctx).Where("id = ?", id).First(&profile).Error
+	err := r.db.WithContext(ctx).Preload("Company").Where("id = ?", id).First(&profile).Error
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (r *builderProfileRepository) GetByID(ctx context.Context, id uuid.UUID) (*
 // GetByUserID retrieves a builder profile by user ID
 func (r *builderProfileRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*models.BuilderProfile, error) {
 	var profile models.BuilderProfile
-	err := r.db.WithContext(ctx).Where("user_id = ?", userID).First(&profile).Error
+	err := r.db.WithContext(ctx).Preload("Company").Where("user_id = ?", userID).First(&profile).Error
 	if err != nil {
 		return nil, err
 	}
