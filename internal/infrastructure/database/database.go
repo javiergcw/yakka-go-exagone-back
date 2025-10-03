@@ -90,6 +90,7 @@ func Migrate() error {
 
 		// Profile models
 		&builderProfileModels.BuilderProfile{},
+		&builderProfileModels.Company{},
 		&labourProfileModels.LabourProfile{},
 		&labourProfileModels.LabourProfileSkill{},
 

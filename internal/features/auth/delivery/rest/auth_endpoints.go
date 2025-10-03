@@ -273,9 +273,13 @@ func (h *AuthHandler) GetProfile(w http.ResponseWriter, r *http.Request) {
 		completeResp.BuilderProfile = &payload.BuilderProfileInfo{}
 	} else if err == nil && builderProfile != nil {
 		completeResp.HasBuilderProfile = true
+		companyName := ""
+		if builderProfile.Company != nil {
+			companyName = builderProfile.Company.Name
+		}
 		completeResp.BuilderProfile = &payload.BuilderProfileInfo{
 			ID:          builderProfile.ID.String(),
-			CompanyName: builderProfile.CompanyName,
+			CompanyName: &companyName,
 			DisplayName: builderProfile.DisplayName,
 			Location:    builderProfile.Location,
 			Bio:         builderProfile.Bio,

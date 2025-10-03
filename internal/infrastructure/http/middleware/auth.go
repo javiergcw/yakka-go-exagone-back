@@ -172,3 +172,57 @@ func BuilderMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+// LabourMiddleware validates JWT tokens and ensures user has labour role
+func LabourMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// First validate JWT token
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			response.WriteError(w, http.StatusUnauthorized, "Authorization header required")
+			return
+		}
+
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			response.WriteError(w, http.StatusUnauthorized, "Invalid authorization format")
+			return
+		}
+
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == "" {
+			response.WriteError(w, http.StatusUnauthorized, "Token required")
+			return
+		}
+
+		claims, err := validateJWTToken(tokenString)
+		if err != nil {
+			log.Printf("🔐 JWT validation failed: %v", err)
+			response.WriteError(w, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
+		// Check if user has labour role
+		userID := claims.UserID
+		var role string
+		err = database.DB.Raw("SELECT role FROM users WHERE id = ?", userID).Scan(&role).Error
+		if err != nil {
+			log.Printf("🔍 Failed to check user role: %v", err)
+			response.WriteError(w, http.StatusInternalServerError, "Failed to verify user role")
+			return
+		}
+
+		if role != "labour" {
+			log.Printf("🚫 Access denied: User %s has role %s, required: labour", userID, role)
+			response.WriteError(w, http.StatusForbidden, "Access denied: Labour role required")
+			return
+		}
+
+		log.Printf("🔐 Labour access granted for user: %s", userID)
+
+		// Set context values for downstream handlers
+		ctx := context.WithValue(r.Context(), UserIDKey, userID)
+		log.Printf("🔍 Context values set - UserID: %s", userID)
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

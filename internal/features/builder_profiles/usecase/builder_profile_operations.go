@@ -21,6 +21,13 @@ type BuilderProfileUsecase interface {
 	GetProfileByUserID(ctx context.Context, userID uuid.UUID) (*builderModels.BuilderProfile, error)
 }
 
+// CompanyUsecase defines the interface for company business logic
+type CompanyUsecase interface {
+	CreateCompany(ctx context.Context, req payload.CreateCompanyRequest) (*builderModels.Company, error)
+	GetAllCompanies(ctx context.Context) ([]*builderModels.Company, error)
+	AssignCompanyToBuilder(ctx context.Context, userID uuid.UUID, req payload.AssignCompanyRequest) (*builderModels.BuilderProfile, error)
+}
+
 type builderProfileUsecase struct {
 	builderRepo     database.BuilderProfileRepository
 	userLicenseRepo authUserRepo.UserLicenseRepository
@@ -62,10 +69,25 @@ func (u *builderProfileUsecase) CreateProfile(ctx context.Context, userID uuid.U
 		}
 	}
 
+	// Parse company_id if provided
+	var companyID *uuid.UUID
+	if req.CompanyID != nil {
+		parsedCompanyID, err := uuid.Parse(*req.CompanyID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid company_id: %w", err)
+		}
+		companyID = &parsedCompanyID
+
+		// Validate company exists
+		if err := u.validateCompanyExists(ctx, parsedCompanyID); err != nil {
+			return nil, err
+		}
+	}
+
 	// Create new profile
 	profile := &builderModels.BuilderProfile{
 		UserID:      userID,
-		CompanyName: req.CompanyName,
+		CompanyID:   companyID,
 		DisplayName: &req.DisplayName,
 		Location:    req.Location,
 		Bio:         req.Bio,
@@ -196,6 +218,131 @@ func (u *builderProfileUsecase) validateLicensesExist(ctx context.Context, licen
 
 	if int(count) != len(licenseIDs) {
 		return fmt.Errorf("license not found")
+	}
+
+	return nil
+}
+
+// validateCompanyExists checks if a company exists
+func (u *builderProfileUsecase) validateCompanyExists(ctx context.Context, companyID uuid.UUID) error {
+	var count int64
+	err := dbInfra.DB.WithContext(ctx).
+		Raw("SELECT COUNT(*) FROM companies WHERE id = ?", companyID).
+		Scan(&count).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to validate company: %w", err)
+	}
+
+	if count == 0 {
+		return fmt.Errorf("company not found")
+	}
+
+	return nil
+}
+
+// companyUsecase implements CompanyUsecase
+type companyUsecase struct {
+	companyRepo database.CompanyRepository
+	builderRepo database.BuilderProfileRepository
+}
+
+func NewCompanyUsecase(companyRepo database.CompanyRepository, builderRepo database.BuilderProfileRepository) CompanyUsecase {
+	return &companyUsecase{
+		companyRepo: companyRepo,
+		builderRepo: builderRepo,
+	}
+}
+
+func (u *companyUsecase) CreateCompany(ctx context.Context, req payload.CreateCompanyRequest) (*builderModels.Company, error) {
+	// Check if company with this name already exists
+	existingCompany, err := u.companyRepo.GetByName(ctx, req.Name)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("failed to check existing company: %w", err)
+	}
+	if existingCompany != nil {
+		return nil, fmt.Errorf("company with this name already exists")
+	}
+
+	// Create new company
+	company := &builderModels.Company{
+		Name:        req.Name,
+		Description: req.Description,
+		Website:     req.Website,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	// Create company in database
+	if err := u.companyRepo.Create(ctx, company); err != nil {
+		return nil, err
+	}
+
+	return company, nil
+}
+
+func (u *companyUsecase) GetAllCompanies(ctx context.Context) ([]*builderModels.Company, error) {
+	companies, err := u.companyRepo.GetAll(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get companies: %w", err)
+	}
+	return companies, nil
+}
+
+func (u *companyUsecase) AssignCompanyToBuilder(ctx context.Context, userID uuid.UUID, req payload.AssignCompanyRequest) (*builderModels.BuilderProfile, error) {
+	// Parse company ID
+	companyID, err := uuid.Parse(req.CompanyID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid company_id: %w", err)
+	}
+
+	// Validate company exists
+	if err := u.validateCompanyExists(ctx, companyID); err != nil {
+		return nil, err
+	}
+
+	// Get or create builder profile
+	builderProfile, err := u.builderRepo.GetByUserID(ctx, userID)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, fmt.Errorf("failed to get builder profile: %w", err)
+	}
+
+	if err == gorm.ErrRecordNotFound {
+		// Create new builder profile with company
+		builderProfile = &builderModels.BuilderProfile{
+			UserID:    userID,
+			CompanyID: &companyID,
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+		}
+		if err := u.builderRepo.Create(ctx, builderProfile); err != nil {
+			return nil, fmt.Errorf("failed to create builder profile: %w", err)
+		}
+	} else {
+		// Update existing builder profile with new company
+		builderProfile.CompanyID = &companyID
+		builderProfile.UpdatedAt = time.Now()
+		if err := u.builderRepo.Update(ctx, builderProfile); err != nil {
+			return nil, fmt.Errorf("failed to update builder profile: %w", err)
+		}
+	}
+
+	return builderProfile, nil
+}
+
+// validateCompanyExists checks if a company exists
+func (u *companyUsecase) validateCompanyExists(ctx context.Context, companyID uuid.UUID) error {
+	var count int64
+	err := dbInfra.DB.WithContext(ctx).
+		Raw("SELECT COUNT(*) FROM companies WHERE id = ?", companyID).
+		Scan(&count).Error
+
+	if err != nil {
+		return fmt.Errorf("failed to validate company: %w", err)
+	}
+
+	if count == 0 {
+		return fmt.Errorf("company not found")
 	}
 
 	return nil

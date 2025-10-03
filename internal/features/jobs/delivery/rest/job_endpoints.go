@@ -474,6 +474,31 @@ func (h *JobHandler) ApplyToJob(w http.ResponseWriter, r *http.Request) {
 	response.WriteJSON(w, http.StatusCreated, result)
 }
 
+// GetLabourApplicants retrieves all applications for the authenticated labour user
+func (h *JobHandler) GetLabourApplicants(w http.ResponseWriter, r *http.Request) {
+	// Get user ID from context (set by LabourMiddleware)
+	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok {
+		response.WriteError(w, http.StatusUnauthorized, "User not authenticated")
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		response.WriteError(w, http.StatusUnauthorized, "Invalid user ID")
+		return
+	}
+
+	// Get applications for this labour user
+	result, err := h.jobUsecase.GetLabourApplicants(r.Context(), userID)
+	if err != nil {
+		response.WriteError(w, http.StatusInternalServerError, "Failed to get applications")
+		return
+	}
+
+	response.WriteJSON(w, http.StatusOK, result)
+}
+
 // GetJobsByJobsite retrieves jobs by jobsite ID
 func (h *JobHandler) GetJobsByJobsite(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -906,7 +931,7 @@ func (h *JobHandler) convertToJobResponseWithRelations(ctx context.Context, job 
 	if builderProfile != nil {
 		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
 			ID:          builderProfile.ID,
-			CompanyName: getStringValue(builderProfile.CompanyName),
+			CompanyName: getCompanyName(builderProfile.Company),
 			DisplayName: builderProfile.DisplayName,
 			Location:    builderProfile.Location,
 			Phone:       nil,
@@ -1045,6 +1070,14 @@ func getStringValue(s *string) string {
 	return *s
 }
 
+// getCompanyName safely gets company name from Company model
+func getCompanyName(company *builder_models.Company) string {
+	if company == nil {
+		return ""
+	}
+	return company.Name
+}
+
 // calculateTotalWage calculates the total wage by summing all wage components
 func calculateTotalWage(job *models.Job) float64 {
 	var total float64
@@ -1108,7 +1141,7 @@ func (h *JobHandler) convertToJobDetailResponse(ctx context.Context, job *models
 	if builderProfile != nil {
 		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
 			ID:          builderProfile.ID,
-			CompanyName: getStringValue(builderProfile.CompanyName),
+			CompanyName: getCompanyName(builderProfile.Company),
 			DisplayName: builderProfile.DisplayName,
 			Location:    builderProfile.Location,
 			Phone:       nil,

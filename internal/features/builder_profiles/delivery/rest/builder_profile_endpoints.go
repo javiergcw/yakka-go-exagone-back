@@ -70,6 +70,18 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 			return
 		}
 
+		// Check for company not found
+		if err.Error() == "company not found" {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		// Check for invalid company_id format
+		if err.Error() == "invalid company_id" {
+			response.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
 		// Generic error for other cases
 		response.WriteError(w, http.StatusInternalServerError, "Failed to create builder profile")
 		return
@@ -79,13 +91,28 @@ func (h *BuilderProfileHandler) CreateBuilderProfile(w http.ResponseWriter, r *h
 	profileResp := payload.BuilderProfileResponse{
 		ID:          profile.ID.String(),
 		UserID:      profile.UserID.String(),
-		CompanyName: getStringValue(profile.CompanyName),
 		DisplayName: getStringValue(profile.DisplayName),
 		Location:    getStringValue(profile.Location),
 		Bio:         profile.Bio,
 		AvatarURL:   req.AvatarURL, // Usar datos del request ya que están en el usuario
 		CreatedAt:   profile.CreatedAt,
 		UpdatedAt:   profile.UpdatedAt,
+	}
+
+	// Add company information if available
+	if profile.CompanyID != nil {
+		companyIDStr := profile.CompanyID.String()
+		profileResp.CompanyID = &companyIDStr
+
+		// If company data is loaded, include it in response
+		if profile.Company != nil {
+			profileResp.Company = &payload.CompanyResponse{
+				ID:          profile.Company.ID.String(),
+				Name:        profile.Company.Name,
+				Description: profile.Company.Description,
+				Website:     profile.Company.Website,
+			}
+		}
 	}
 
 	resp := payload.CreateBuilderProfileResponse{

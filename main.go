@@ -73,6 +73,7 @@ func main() {
 	authPasswordRepo := auth_password_db.NewPasswordResetRepository(database.DB)
 	authEmailRepo := auth_email_db.NewEmailVerificationRepository(database.DB)
 	builderRepo := builder_db.NewBuilderProfileRepository(database.DB)
+	companyRepo := builder_db.NewCompanyRepository(database.DB)
 	labourRepo := labour_db.NewLabourProfileRepository(database.DB)
 	jobsiteRepo := jobsite_db.NewJobsiteRepositoryImpl(database.DB)
 
@@ -105,11 +106,12 @@ func main() {
 
 	labourProfileUseCase := labour_usecase.NewLabourProfileUsecase(labourRepo, labourSkillRepo, userLicenseRepo, authUserRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, experienceRepo)
 	builderProfileUseCase := builder_usecase.NewBuilderProfileUsecase(builderRepo, userLicenseRepo, authUserRepo, licenseRepo)
+	companyUseCase := builder_usecase.NewCompanyUsecase(companyRepo, builderRepo)
 	jobsiteUseCase := jobsite_usecase.NewJobsiteUsecaseImpl(jobsiteRepo)
 	paymentConstantUseCase := payment_constant_usecase.NewPaymentConstantUsecase(paymentConstantRepo)
 	// jobApplicationUseCase := job_application_usecase.NewJobApplicationUsecase(jobApplicationRepo) // Available for future use
 	// jobAssignmentUseCase := job_assignment_usecase.NewJobAssignmentUsecase(jobAssignmentRepo) // Available for future use
-	jobUseCase := job_usecase.NewJobUsecase(jobRepo, jobLicenseRepo, jobSkillRepo, jobJobRequirementRepo, jobRequirementRepo, builderRepo, jobsiteRepo, jobTypeRepo, jobApplicationRepo, jobAssignmentRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo)
+	jobUseCase := job_usecase.NewJobUsecase(jobRepo, jobLicenseRepo, jobSkillRepo, jobJobRequirementRepo, jobRequirementRepo, builderRepo, jobsiteRepo, jobTypeRepo, jobApplicationRepo, jobAssignmentRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, authUserRepo)
 
 	// Initialize handlers
 	authHandler := auth_rest.NewAuthHandler(authUserUseCase, authEmailUseCase, builderProfileUseCase, labourProfileUseCase)
@@ -118,12 +120,13 @@ func main() {
 	emailHandler := auth_rest.NewEmailHandler(authEmailUseCase)
 	labourProfileHandler := labour_rest.NewLabourProfileHandler(labourProfileUseCase)
 	builderProfileHandler := builder_rest.NewBuilderProfileHandler(builderProfileUseCase)
+	companyHandler := builder_rest.NewCompanyHandler(companyUseCase)
 	jobsiteHandler := jobsite_rest.NewJobsiteHandler(jobsiteUseCase)
 	// jobApplicationHandler := job_application_rest.NewJobApplicationHandler(jobApplicationUseCase) // Available for future use
 	// jobAssignmentHandler := job_assignment_rest.NewJobAssignmentHandler(jobAssignmentUseCase) // Available for future use
 
 	// Initialize router
-	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, jobsiteHandler, jobUseCase, builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, paymentConstantUseCase, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo)
+	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, companyHandler, jobsiteHandler, jobUseCase, builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, paymentConstantUseCase, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo)
 	httpRouter := router.SetupRoutes()
 
 	// Start server

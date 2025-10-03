@@ -37,6 +37,7 @@ type Router struct {
 	emailHandler            *auth_rest.EmailHandler
 	labourProfileHandler    *labour_rest.LabourProfileHandler
 	builderProfileHandler   *builder_rest.BuilderProfileHandler
+	companyHandler          *builder_rest.CompanyHandler
 	jobsiteHandler          *jobsite_rest.JobsiteHandler
 	jobHandler              *job_rest.JobHandler
 	licenseHandler          *license_rest.LicenseHandler
@@ -57,6 +58,7 @@ func NewRouter(
 	emailHandler *auth_rest.EmailHandler,
 	labourProfileHandler *labour_rest.LabourProfileHandler,
 	builderProfileHandler *builder_rest.BuilderProfileHandler,
+	companyHandler *builder_rest.CompanyHandler,
 	jobsiteHandler *jobsite_rest.JobsiteHandler,
 	jobUsecase job_usecase.JobUsecase,
 	builderProfileRepo builder_db.BuilderProfileRepository,
@@ -75,6 +77,7 @@ func NewRouter(
 		emailHandler:            emailHandler,
 		labourProfileHandler:    labourProfileHandler,
 		builderProfileHandler:   builderProfileHandler,
+		companyHandler:          companyHandler,
 		jobsiteHandler:          jobsiteHandler,
 		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo, jobsiteRepo, jobTypeRepo, licenseRepo, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo),
 		licenseHandler:          license_rest.NewLicenseHandler(),
@@ -103,6 +106,10 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.HandleFunc("/auth/register", r.authHandler.Register).Methods("POST")
 	api.HandleFunc("/auth/login", r.authHandler.Login).Methods("POST")
 
+	// Company endpoints (require license)
+	api.Handle("/companies", middleware.LicenseMiddleware(http.HandlerFunc(r.companyHandler.CreateCompany))).Methods("POST")
+	api.Handle("/companies", middleware.LicenseMiddleware(http.HandlerFunc(r.companyHandler.GetCompanies))).Methods("GET")
+
 	// Master tables endpoints (require license)
 	api.Handle("/licenses", middleware.LicenseMiddleware(http.HandlerFunc(r.licenseHandler.GetLicenses))).Methods("GET")
 	api.Handle("/experience-levels", middleware.LicenseMiddleware(http.HandlerFunc(r.experienceLevelHandler.GetExperienceLevels))).Methods("GET")
@@ -120,6 +127,7 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/auth/profile", middleware.AuthMiddleware(http.HandlerFunc(r.authHandler.GetProfile))).Methods("GET")
 
 	// Builder endpoints (require builder role)
+	api.Handle("/builder/companies", middleware.BuilderMiddleware(http.HandlerFunc(r.companyHandler.AssignCompany))).Methods("POST")
 	api.Handle("/jobsites", middleware.BuilderMiddleware(http.HandlerFunc(r.jobsiteHandler.CreateJobsite))).Methods("POST")
 	api.Handle("/jobsites", middleware.BuilderMiddleware(http.HandlerFunc(r.jobsiteHandler.GetJobsitesByBuilder))).Methods("GET")
 	api.Handle("/jobsites/{id}", middleware.BuilderMiddleware(http.HandlerFunc(r.jobsiteHandler.GetJobsiteByID))).Methods("GET")
@@ -134,10 +142,11 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/builder/applicants", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.GetBuilderApplicants))).Methods("GET")
 	api.Handle("/builder/applicants", middleware.BuilderMiddleware(http.HandlerFunc(r.jobHandler.ProcessApplicantDecision))).Methods("POST")
 
-	// Labour endpoints (require authentication)
-	api.Handle("/labour/jobs", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobs))).Methods("GET")
-	api.Handle("/labour/jobs/{id}", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobDetail))).Methods("GET")
-	api.Handle("/labour/applicants", middleware.AuthMiddleware(http.HandlerFunc(r.jobHandler.ApplyToJob))).Methods("POST")
+	// Labour endpoints (require labour role)
+	api.Handle("/labour/jobs", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobs))).Methods("GET")
+	api.Handle("/labour/jobs/{id}", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobDetail))).Methods("GET")
+	api.Handle("/labour/applicants", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.GetLabourApplicants))).Methods("GET")
+	api.Handle("/labour/applicants", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.ApplyToJob))).Methods("POST")
 
 	//labour endpoints
 

@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	auth_user_db "github.com/yakka-backend/internal/features/auth/user/entity/database"
+	auth_user_models "github.com/yakka-backend/internal/features/auth/user/models"
 	builder_db "github.com/yakka-backend/internal/features/builder_profiles/entity/database"
 	builder_models "github.com/yakka-backend/internal/features/builder_profiles/models"
 	job_application_db "github.com/yakka-backend/internal/features/job_applications/entity/database"
@@ -45,6 +47,7 @@ type JobUsecase interface {
 	GetLabourJobDetail(ctx context.Context, jobID uuid.UUID, labourUserID uuid.UUID) (*payload.LabourJobDetailResponse, error)
 	GetBuilderJobDetail(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID) (*payload.GetJobResponse, error)
 	UpdateJobVisibility(ctx context.Context, jobID uuid.UUID, builderProfileID uuid.UUID, req payload.UpdateJobVisibilityRequest) (*payload.UpdateJobVisibilityResponse, error)
+	GetLabourApplicants(ctx context.Context, labourUserID uuid.UUID) (*payload.LabourApplicantsResponse, error)
 }
 
 // jobUsecase implements JobUsecase
@@ -62,6 +65,7 @@ type jobUsecase struct {
 	licenseRepo           license_db.LicenseRepository
 	skillCategoryRepo     skill_category_db.SkillCategoryRepository
 	skillSubcategoryRepo  skill_category_db.SkillSubcategoryRepository
+	userRepo              auth_user_db.UserRepository
 	validator             *JobValidationService
 }
 
@@ -80,6 +84,7 @@ func NewJobUsecase(
 	licenseRepo license_db.LicenseRepository,
 	skillCategoryRepo skill_category_db.SkillCategoryRepository,
 	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository,
+	userRepo auth_user_db.UserRepository,
 ) JobUsecase {
 	return &jobUsecase{
 		jobRepo:               jobRepo,
@@ -95,6 +100,7 @@ func NewJobUsecase(
 		licenseRepo:           licenseRepo,
 		skillCategoryRepo:     skillCategoryRepo,
 		skillSubcategoryRepo:  skillSubcategoryRepo,
+		userRepo:              userRepo,
 		validator:             NewJobValidationService(builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, skillCategoryRepo, skillSubcategoryRepo, jobRequirementRepo),
 	}
 }
@@ -404,16 +410,34 @@ func (u *jobUsecase) GetBuilderApplicants(ctx context.Context, builderProfileID 
 		// Convert applications to JobApplicantInfo
 		applicants := make([]payload.JobApplicantInfo, 0) // Initialize as empty slice, not nil
 		for _, app := range applications {
-			// Get labour profile information
-			// TODO: Get labour profile info from labour_profiles table
-			// For now, we'll create a placeholder
-			labourInfo := payload.LabourApplicantInfo{
-				UserID:    app.LabourUserID.String(),
-				FullName:  "Labour User", // TODO: Get from labour profile
-				AvatarURL: nil,
-				Phone:     nil,
-				Email:     "labour@example.com", // TODO: Get from user table
+			// Get labour user information from users table
+			labourUser, err := u.userRepo.GetByID(ctx, app.LabourUserID)
+			if err != nil {
+				log.Printf("Error getting labour user %s: %v", app.LabourUserID, err)
+				// Create a fallback labour info if user not found
+				labourInfo := payload.LabourApplicantInfo{
+					UserID:    app.LabourUserID.String(),
+					FullName:  "Usuario Labour",
+					AvatarURL: nil,
+					Phone:     nil,
+					Email:     "usuario@ejemplo.com",
+				}
+
+				applicant := payload.JobApplicantInfo{
+					ApplicationID: app.ID.String(),
+					Status:        string(app.Status),
+					CoverLetter:   app.CoverLetter,
+					ExpectedRate:  app.ExpectedRate,
+					ResumeURL:     app.ResumeURL,
+					AppliedAt:     app.CreatedAt,
+					Labour:        labourInfo,
+				}
+				applicants = append(applicants, applicant)
+				continue
 			}
+
+			// Build labour info from user data
+			labourInfo := u.buildLabourApplicantInfoFromUser(labourUser)
 
 			applicant := payload.JobApplicantInfo{
 				ApplicationID: app.ID.String(),
@@ -476,16 +500,34 @@ func (u *jobUsecase) GetBuilderApplicantsByJobsite(ctx context.Context, builderP
 		// Convert applications to JobApplicantInfo
 		applicants := make([]payload.JobApplicantInfo, 0)
 		for _, app := range applications {
-			// Get labour profile information
-			// TODO: Get labour profile info from labour_profiles table
-			// For now, we'll create a placeholder
-			labourInfo := payload.LabourApplicantInfo{
-				UserID:    app.LabourUserID.String(),
-				FullName:  "Labour User", // TODO: Get from labour profile
-				AvatarURL: nil,
-				Phone:     nil,
-				Email:     "labour@example.com", // TODO: Get from user table
+			// Get labour user information from users table
+			labourUser, err := u.userRepo.GetByID(ctx, app.LabourUserID)
+			if err != nil {
+				log.Printf("Error getting labour user %s: %v", app.LabourUserID, err)
+				// Create a fallback labour info if user not found
+				labourInfo := payload.LabourApplicantInfo{
+					UserID:    app.LabourUserID.String(),
+					FullName:  "Usuario Labour",
+					AvatarURL: nil,
+					Phone:     nil,
+					Email:     "usuario@ejemplo.com",
+				}
+
+				applicant := payload.JobApplicantInfo{
+					ApplicationID: app.ID.String(),
+					Status:        string(app.Status),
+					CoverLetter:   app.CoverLetter,
+					ExpectedRate:  app.ExpectedRate,
+					ResumeURL:     app.ResumeURL,
+					AppliedAt:     app.CreatedAt,
+					Labour:        labourInfo,
+				}
+				applicants = append(applicants, applicant)
+				continue
 			}
+
+			// Build labour info from user data
+			labourInfo := u.buildLabourApplicantInfoFromUser(labourUser)
 
 			applicant := payload.JobApplicantInfo{
 				ApplicationID: app.ID.String(),
@@ -569,11 +611,11 @@ func (u *jobUsecase) ProcessApplicantDecision(ctx context.Context, builderProfil
 
 	response := &payload.BuilderApplicantDecisionResponse{
 		ApplicationID: req.ApplicationID,
-		Hired:         req.Hired,
+		Hired:         *req.Hired,
 		Message:       "Decision processed successfully",
 	}
 
-	if req.Hired {
+	if *req.Hired {
 		// Update application status to ACCEPTED
 		if err := u.jobApplicationRepo.UpdateStatus(ctx, applicationID, job_application_models.ApplicationStatusAccepted); err != nil {
 			return nil, fmt.Errorf("failed to update application status: %w", err)
@@ -735,7 +777,7 @@ func (u *jobUsecase) GetLabourJobs(ctx context.Context, labourUserID uuid.UUID) 
 			UpdatedAt:       job.UpdatedAt,
 			Builder: payload.BuilderInfo{
 				BuilderID:   builderProfile.ID.String(),
-				CompanyName: getStringValue(builderProfile.CompanyName),
+				CompanyName: getCompanyName(builderProfile.Company),
 				DisplayName: getStringValue(builderProfile.DisplayName),
 				Location:    getStringValue(builderProfile.Location),
 				AvatarURL:   nil, // TODO: Get from user table
@@ -759,6 +801,37 @@ func getStringValue(s *string) string {
 		return ""
 	}
 	return *s
+}
+
+// getCompanyName safely gets company name from Company model
+func getCompanyName(company *builder_models.Company) string {
+	if company == nil {
+		return ""
+	}
+	return company.Name
+}
+
+// buildLabourApplicantInfoFromUser builds LabourApplicantInfo from User model
+func (u *jobUsecase) buildLabourApplicantInfoFromUser(user *auth_user_models.User) payload.LabourApplicantInfo {
+	// Build full name from first and last name
+	var fullName string
+	if user.FirstName != nil && user.LastName != nil {
+		fullName = *user.FirstName + " " + *user.LastName
+	} else if user.FirstName != nil {
+		fullName = *user.FirstName
+	} else if user.LastName != nil {
+		fullName = *user.LastName
+	} else {
+		fullName = "Usuario Labour" // Fallback
+	}
+
+	return payload.LabourApplicantInfo{
+		UserID:    user.ID.String(),
+		FullName:  fullName,
+		AvatarURL: user.Photo,
+		Phone:     user.Phone,
+		Email:     user.Email,
+	}
 }
 
 // ApplyToJob allows a labour user to apply for a job
@@ -913,7 +986,7 @@ func (u *jobUsecase) convertToJobResponseWithRelations(ctx context.Context, job 
 	if builderProfile != nil {
 		jobResp.BuilderProfile = &payload.BuilderProfileResponse{
 			ID:          builderProfile.ID,
-			CompanyName: getStringValue(builderProfile.CompanyName),
+			CompanyName: builderProfile.Company.Name,
 			DisplayName: builderProfile.DisplayName,
 			Location:    builderProfile.Location,
 			Phone:       nil, // Not available in BuilderProfile model
@@ -1223,4 +1296,94 @@ func (u *jobUsecase) calculateTotalWage(job *models.Job) float64 {
 	}
 
 	return total
+}
+
+// GetLabourApplicants retrieves all applications for a labour user with job information
+func (u *jobUsecase) GetLabourApplicants(ctx context.Context, labourUserID uuid.UUID) (*payload.LabourApplicantsResponse, error) {
+	// Get all applications for this labour user (with pagination - using large limit to get all)
+	applications, _, err := u.jobApplicationRepo.GetByLabourUserID(ctx, labourUserID, 1, 1000)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applications: %w", err)
+	}
+
+	var labourApplicants []payload.LabourApplicationInfo
+
+	for _, application := range applications {
+		// Filter only applications with status "APPLIED"
+		if application.Status != job_application_models.ApplicationStatusApplied {
+			continue
+		}
+		// Get job information for each application
+		job, err := u.jobRepo.GetByID(ctx, application.JobID)
+		if err != nil {
+			log.Printf("🚫 Failed to get job for application %s: %v", application.ID, err)
+			continue
+		}
+
+		// Build job info with basic data
+		jobInfo := payload.JobInfo{
+			ID:             job.ID.String(),
+			Description:    getStringValue(job.Description),
+			StartDate:      job.StartDateWork,
+			EndDate:        job.EndDateWork,
+			WageHourlyRate: job.WageHourlyRate,
+			Visibility:     string(job.Visibility),
+			CreatedAt:      job.CreatedAt,
+		}
+
+		// Try to get additional relations separately
+		// Get builder profile info
+		if builderProfile, err := u.builderRepo.GetByID(ctx, job.BuilderProfileID); err == nil {
+			companyName := getCompanyName(builderProfile.Company)
+			jobInfo.BuilderProfile = &payload.BuilderProfileInfo{
+				ID:          builderProfile.ID.String(),
+				CompanyName: &companyName,
+				DisplayName: getStringValue(builderProfile.DisplayName),
+				Location:    builderProfile.Location,
+			}
+		}
+
+		// Get jobsite info
+		if jobsite, err := u.jobsiteRepo.GetByID(ctx, job.JobsiteID); err == nil {
+			jobInfo.Jobsite = &payload.JobsiteApplicationInfo{
+				ID:          jobsite.ID.String(),
+				Name:        jobsite.Description,
+				Address:     jobsite.Address,
+				City:        jobsite.City,
+				Suburb:      jobsite.Suburb,
+				Description: jobsite.Description,
+			}
+		}
+
+		// Get job type info
+		if jobType, err := u.jobTypeRepo.GetByID(ctx, job.JobTypeID); err == nil {
+			jobInfo.JobType = &payload.JobTypeInfo{
+				ID:          jobType.ID.String(),
+				Name:        jobType.Name,
+				Description: jobType.Description,
+			}
+		}
+
+		// Build labour applicant info
+		labourApplicant := payload.LabourApplicationInfo{
+			ApplicationID: application.ID.String(),
+			JobID:         application.JobID.String(),
+			Status:        string(application.Status),
+			CoverLetter:   application.CoverLetter,
+			ExpectedRate:  application.ExpectedRate,
+			ResumeURL:     application.ResumeURL,
+			AppliedAt:     application.CreatedAt,
+			Job:           jobInfo,
+		}
+
+		labourApplicants = append(labourApplicants, labourApplicant)
+	}
+
+	response := &payload.LabourApplicantsResponse{
+		Applications: labourApplicants,
+		Total:        len(labourApplicants),
+		Message:      "Applications retrieved successfully",
+	}
+
+	return response, nil
 }
