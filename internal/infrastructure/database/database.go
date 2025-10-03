@@ -20,6 +20,7 @@ import (
 	licenseModels "github.com/yakka-backend/internal/features/masters/licenses/models"
 	paymentConstantModels "github.com/yakka-backend/internal/features/masters/payment_constants/models"
 	skillModels "github.com/yakka-backend/internal/features/masters/skills/models"
+	qualificationModels "github.com/yakka-backend/internal/features/qualifications/models"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -132,6 +133,11 @@ func Migrate() error {
 
 		// Job Assignment models
 		&jobAssignmentModels.JobAssignment{},
+
+		// Qualification models
+		&qualificationModels.SportsQualification{},
+		&qualificationModels.Qualification{},
+		&qualificationModels.LabourProfileQualification{},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to migrate database: %w", err)

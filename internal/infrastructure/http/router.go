@@ -25,29 +25,32 @@ import (
 	payment_constant_usecase "github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_category_rest "github.com/yakka-backend/internal/features/masters/skills/delivery/rest"
 	skill_category_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
+	qualification_rest "github.com/yakka-backend/internal/features/qualifications/delivery/rest"
 	"github.com/yakka-backend/internal/infrastructure/http/middleware"
 	"github.com/yakka-backend/internal/shared/response"
 )
 
 // Router sets up the HTTP routes
 type Router struct {
-	authHandler             *auth_rest.AuthHandler
-	sessionHandler          *auth_rest.SessionHandler
-	passwordHandler         *auth_rest.PasswordHandler
-	emailHandler            *auth_rest.EmailHandler
-	labourProfileHandler    *labour_rest.LabourProfileHandler
-	builderProfileHandler   *builder_rest.BuilderProfileHandler
-	companyHandler          *builder_rest.CompanyHandler
-	jobsiteHandler          *jobsite_rest.JobsiteHandler
-	jobHandler              *job_rest.JobHandler
-	licenseHandler          *license_rest.LicenseHandler
-	experienceLevelHandler  *experience_level_rest.ExperienceLevelHandler
-	skillCategoryHandler    *skill_category_rest.SkillCategoryHandler
-	skillSubcategoryHandler *skill_category_rest.SkillSubcategoryHandler
-	skillCompleteHandler    *skill_category_rest.SkillCompleteHandler
-	jobRequirementHandler   *job_requirement_rest.JobRequirementHandler
-	jobTypeHandler          *job_type_rest.JobTypeHandler
-	paymentConstantHandler  *payment_constant_rest.PaymentConstantHandler
+	authHandler                *auth_rest.AuthHandler
+	sessionHandler             *auth_rest.SessionHandler
+	passwordHandler            *auth_rest.PasswordHandler
+	emailHandler               *auth_rest.EmailHandler
+	labourProfileHandler       *labour_rest.LabourProfileHandler
+	builderProfileHandler      *builder_rest.BuilderProfileHandler
+	companyHandler             *builder_rest.CompanyHandler
+	jobsiteHandler             *jobsite_rest.JobsiteHandler
+	jobHandler                 *job_rest.JobHandler
+	qualificationHandler       *qualification_rest.QualificationHandler
+	labourQualificationHandler *qualification_rest.LabourQualificationHandler
+	licenseHandler             *license_rest.LicenseHandler
+	experienceLevelHandler     *experience_level_rest.ExperienceLevelHandler
+	skillCategoryHandler       *skill_category_rest.SkillCategoryHandler
+	skillSubcategoryHandler    *skill_category_rest.SkillSubcategoryHandler
+	skillCompleteHandler       *skill_category_rest.SkillCompleteHandler
+	jobRequirementHandler      *job_requirement_rest.JobRequirementHandler
+	jobTypeHandler             *job_type_rest.JobTypeHandler
+	paymentConstantHandler     *payment_constant_rest.PaymentConstantHandler
 }
 
 // NewRouter creates a new router
@@ -60,6 +63,8 @@ func NewRouter(
 	builderProfileHandler *builder_rest.BuilderProfileHandler,
 	companyHandler *builder_rest.CompanyHandler,
 	jobsiteHandler *jobsite_rest.JobsiteHandler,
+	qualificationHandler *qualification_rest.QualificationHandler,
+	labourQualificationHandler *qualification_rest.LabourQualificationHandler,
 	jobUsecase job_usecase.JobUsecase,
 	builderProfileRepo builder_db.BuilderProfileRepository,
 	jobsiteRepo jobsite_db.JobsiteRepository,
@@ -71,23 +76,25 @@ func NewRouter(
 	skillSubcategoryRepo skill_category_db.SkillSubcategoryRepository,
 ) *Router {
 	return &Router{
-		authHandler:             authHandler,
-		sessionHandler:          sessionHandler,
-		passwordHandler:         passwordHandler,
-		emailHandler:            emailHandler,
-		labourProfileHandler:    labourProfileHandler,
-		builderProfileHandler:   builderProfileHandler,
-		companyHandler:          companyHandler,
-		jobsiteHandler:          jobsiteHandler,
-		jobHandler:              job_rest.NewJobHandler(jobUsecase, builderProfileRepo, jobsiteRepo, jobTypeRepo, licenseRepo, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo),
-		licenseHandler:          license_rest.NewLicenseHandler(),
-		experienceLevelHandler:  experience_level_rest.NewExperienceLevelHandler(),
-		skillCategoryHandler:    skill_category_rest.NewSkillCategoryHandler(),
-		skillSubcategoryHandler: skill_category_rest.NewSkillSubcategoryHandler(),
-		skillCompleteHandler:    skill_category_rest.NewSkillCompleteHandler(),
-		jobRequirementHandler:   job_requirement_rest.NewJobRequirementHandler(jobRequirementRepo),
-		jobTypeHandler:          job_type_rest.NewJobTypeHandler(jobTypeRepo),
-		paymentConstantHandler:  payment_constant_rest.NewPaymentConstantHandler(paymentConstantUseCase),
+		authHandler:                authHandler,
+		sessionHandler:             sessionHandler,
+		passwordHandler:            passwordHandler,
+		emailHandler:               emailHandler,
+		labourProfileHandler:       labourProfileHandler,
+		builderProfileHandler:      builderProfileHandler,
+		companyHandler:             companyHandler,
+		jobsiteHandler:             jobsiteHandler,
+		qualificationHandler:       qualificationHandler,
+		labourQualificationHandler: labourQualificationHandler,
+		jobHandler:                 job_rest.NewJobHandler(jobUsecase, builderProfileRepo, jobsiteRepo, jobTypeRepo, licenseRepo, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo),
+		licenseHandler:             license_rest.NewLicenseHandler(),
+		experienceLevelHandler:     experience_level_rest.NewExperienceLevelHandler(),
+		skillCategoryHandler:       skill_category_rest.NewSkillCategoryHandler(),
+		skillSubcategoryHandler:    skill_category_rest.NewSkillSubcategoryHandler(),
+		skillCompleteHandler:       skill_category_rest.NewSkillCompleteHandler(),
+		jobRequirementHandler:      job_requirement_rest.NewJobRequirementHandler(jobRequirementRepo),
+		jobTypeHandler:             job_type_rest.NewJobTypeHandler(jobTypeRepo),
+		paymentConstantHandler:     payment_constant_rest.NewPaymentConstantHandler(paymentConstantUseCase),
 	}
 }
 
@@ -117,6 +124,7 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/skill-subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategories))).Methods("GET")
 	api.Handle("/skill-categories/{categoryId}/subcategories", middleware.LicenseMiddleware(http.HandlerFunc(r.skillSubcategoryHandler.GetSkillSubcategoriesByCategory))).Methods("GET")
 	api.Handle("/skills", middleware.LicenseMiddleware(http.HandlerFunc(r.skillCompleteHandler.GetSkillsComplete))).Methods("GET")
+	api.Handle("/qualifications", middleware.LicenseMiddleware(http.HandlerFunc(r.qualificationHandler.GetQualifications))).Methods("GET")
 	api.Handle("/payment-constants", middleware.LicenseMiddleware(http.HandlerFunc(r.paymentConstantHandler.GetAllPaymentConstants))).Methods("GET")
 	api.Handle("/job-requirements", middleware.LicenseMiddleware(http.HandlerFunc(r.jobRequirementHandler.GetJobRequirements))).Methods("GET")
 	api.Handle("/job-types", middleware.LicenseMiddleware(http.HandlerFunc(r.jobTypeHandler.GetJobTypes))).Methods("GET")
@@ -147,6 +155,9 @@ func (r *Router) SetupRoutes() http.Handler {
 	api.Handle("/labour/jobs/{id}", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.GetLabourJobDetail))).Methods("GET")
 	api.Handle("/labour/applicants", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.GetLabourApplicants))).Methods("GET")
 	api.Handle("/labour/applicants", middleware.LabourMiddleware(http.HandlerFunc(r.jobHandler.ApplyToJob))).Methods("POST")
+	api.Handle("/labour/qualifications", middleware.LabourMiddleware(http.HandlerFunc(r.labourQualificationHandler.GetLabourQualifications))).Methods("GET")
+	api.Handle("/labour/qualifications", middleware.LabourMiddleware(http.HandlerFunc(r.labourQualificationHandler.CreateLabourQualifications))).Methods("POST")
+	api.Handle("/labour/qualifications", middleware.LabourMiddleware(http.HandlerFunc(r.labourQualificationHandler.UpdateLabourQualifications))).Methods("PUT")
 
 	//labour endpoints
 

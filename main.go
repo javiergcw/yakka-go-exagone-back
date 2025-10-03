@@ -35,6 +35,8 @@ import (
 	payment_constant_db "github.com/yakka-backend/internal/features/masters/payment_constants/entity/database"
 	payment_constant_usecase "github.com/yakka-backend/internal/features/masters/payment_constants/usecase"
 	skill_db "github.com/yakka-backend/internal/features/masters/skills/entity/database"
+	qualification_rest "github.com/yakka-backend/internal/features/qualifications/delivery/rest"
+	qualification_db "github.com/yakka-backend/internal/features/qualifications/entity/database"
 	"github.com/yakka-backend/internal/infrastructure/config"
 	"github.com/yakka-backend/internal/infrastructure/database"
 	httpRouter "github.com/yakka-backend/internal/infrastructure/http"
@@ -122,11 +124,20 @@ func main() {
 	builderProfileHandler := builder_rest.NewBuilderProfileHandler(builderProfileUseCase)
 	companyHandler := builder_rest.NewCompanyHandler(companyUseCase)
 	jobsiteHandler := jobsite_rest.NewJobsiteHandler(jobsiteUseCase)
+
+	// Initialize qualification repositories and handlers
+	qualificationRepo := qualification_db.NewQualificationRepository(database.DB)
+	qualificationHandler := qualification_rest.NewQualificationHandler(qualificationRepo)
+
+	// Initialize labour qualification repositories and handlers
+	labourQualificationRepo := qualification_db.NewLabourProfileQualificationRepository(database.DB)
+	labourQualificationHandler := qualification_rest.NewLabourQualificationHandler(labourQualificationRepo, qualificationRepo)
+
 	// jobApplicationHandler := job_application_rest.NewJobApplicationHandler(jobApplicationUseCase) // Available for future use
 	// jobAssignmentHandler := job_assignment_rest.NewJobAssignmentHandler(jobAssignmentUseCase) // Available for future use
 
 	// Initialize router
-	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, companyHandler, jobsiteHandler, jobUseCase, builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, paymentConstantUseCase, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo)
+	router := httpRouter.NewRouter(authHandler, sessionHandler, passwordHandler, emailHandler, labourProfileHandler, builderProfileHandler, companyHandler, jobsiteHandler, qualificationHandler, labourQualificationHandler, jobUseCase, builderRepo, jobsiteRepo, jobTypeRepo, licenseRepo, paymentConstantUseCase, jobRequirementRepo, skillCategoryRepo, skillSubcategoryRepo)
 	httpRouter := router.SetupRoutes()
 
 	// Start server
